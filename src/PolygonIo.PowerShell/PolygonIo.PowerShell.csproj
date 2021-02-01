@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<TargetFramework>netstandard2.0</TargetFramework>
+		<CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+
+		<VersionPrefix>1.0.0</VersionPrefix>
+		<Authors>Unified Microsystems Developers</Authors>
+		<Company>Unified Mictrosystems</Company>
+		<PackageDescription></PackageDescription>
+
+		<RepositoryUrl>https://github.com/unified-dev/polygonio</RepositoryUrl>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Nito.AsyncEx" Version="5.1.0" />
+		<PackageReference Include="NPOI" Version="2.5.2" />
+		<PackageReference Include="PowerShellStandard.Library" Version="5.1.0" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\PolygonIo.WebApi\PolygonIo.WebApi.csproj" />
+	</ItemGroup>
+
+</Project>

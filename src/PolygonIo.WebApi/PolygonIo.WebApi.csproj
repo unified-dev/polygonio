@@ -1,0 +1,23 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<TargetFramework>netstandard2.0</TargetFramework>
+		
+		<VersionPrefix>1.0.0</VersionPrefix>
+		<Authors>Unified Microsystems Developers</Authors>
+		<Company>Unified Mictrosystems</Company>
+		<PackageDescription></PackageDescription>
+
+		<RepositoryUrl>https://github.com/unified-dev/polygonio</RepositoryUrl>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Flurl" Version="3.0.1" />
+		<PackageReference Include="Microsoft.Extensions.ApiDescription.Client" Version="5.0.1">
+			<PrivateAssets>all</PrivateAssets>
+			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+		</PackageReference>
+		<PackageReference Include="Newtonsoft.Json" Version="12.0.3" />
+	</ItemGroup>
+
+</Project>
