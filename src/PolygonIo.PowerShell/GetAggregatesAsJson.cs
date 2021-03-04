@@ -51,7 +51,7 @@ namespace PolygonIo.PowerShell
             using (var hc = new HttpClient())
             {
                 return await PolygonWebApi
-                                .GetAggregatesBarsAsync(hc, this.ApiKey, StocksTicker, Multiplier, Timespan, From, To, Unadjusted, Sort, Limit, cts.Token);
+                                .GetAggregatesBarsAsync(hc, cts.Token, ApiKey, StocksTicker, Multiplier, Timespan, From, To, Unadjusted, Sort, Limit);
             }
         }
 
