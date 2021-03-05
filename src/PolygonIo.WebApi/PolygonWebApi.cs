@@ -57,6 +57,9 @@ namespace PolygonIo.WebApi
 
         public static async Task<AggregateResponse> GetAggregatesBarsAsync(HttpClient client, CancellationToken cancellationToken, string apiKey, string symbol, int multiplier, Timespan timespan, DateTimeOffset from, DateTimeOffset to, bool? unadjusted = null, Sort? sort = null, int? limit = null)
         {
+            if (from < to)
+                throw new ArgumentException($"To '{to}' must not be earlier than from '{from}'.", nameof(to));
+
             var url = apiUrl
                         .AppendPathSegments(apiVersion, AggsString, TickerString ,symbol, RangeString, multiplier, timespan.ToString("g").ToLower(), from.ToString(DateFormat), to.ToString(DateFormat))
                         .SetQueryParamIfNotNull(nameof(unadjusted), unadjusted)
