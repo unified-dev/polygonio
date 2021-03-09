@@ -8,7 +8,6 @@ namespace PolygonIo.WebApi
         {
             if (t != null)
                 url.SetQueryParam(name, t);
-
             return url;
         }
     }
