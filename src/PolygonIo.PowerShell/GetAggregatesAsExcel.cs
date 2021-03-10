@@ -52,10 +52,10 @@ namespace PolygonIo.PowerShell
 
         protected async Task<AggregateResponse> ProcessRecordAsync()
         {
-            using (var hc = new HttpClient())
+            using (var client = new HttpClient())
             {
-                return await PolygonWebApi
-                                .GetAggregatesBarsAsync(hc, cts.Token, this.ApiKey, StocksTicker, Multiplier, Timespan, From, To, Unadjusted, Sort, Limit);
+                return await client.GetPolygonAggregatesBarsAsync(
+                    cts.Token, this.ApiKey, StocksTicker, Multiplier, Timespan, From, To, Unadjusted, Sort, Limit);
             }
         }
 

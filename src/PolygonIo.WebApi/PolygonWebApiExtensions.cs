@@ -8,12 +8,12 @@ using System.Threading.Tasks;
 
 namespace PolygonIo.WebApi
 {
-    public class PolygonWebApi
+    public static class PolygonWebApiExtensions
     {
-        const string DateFormat = "yyyy-MM-dd";        
-        const string apiUrl = "https://api.polygon.io/";
-        const string apiVersion = "v2";
-        const int MaxResultsPerPage = 50;
+        private const string DateFormat = "yyyy-MM-dd";
+        private const string apiUrl = "https://api.polygon.io/";
+        private const string apiVersion = "v2";
+        private const int MaxResultsPerPage = 50;
         private const string RedactedApiKeyString = "*";
         private const string AggsString = "aggs";
         private const string TickerString = "ticker";
@@ -25,12 +25,12 @@ namespace PolygonIo.WebApi
         private const string TickersString = "tickers";
         private const string MarketString = "market";
 
-        public static async Task<TickersResponse> GetTickersAsync(HttpClient client, string apiKey, int perPage, int page, CancellationToken cancellationToken)
+        public static async Task<TickersResponse> GetPolygonTickersAsync(this HttpClient client, string apiKey, int perPage, int page, CancellationToken cancellationToken)
         {
-            return await GetTickersAsync(client, cancellationToken, apiKey, perPage, page);
+            return await GetPolygonTickersAsync(client, cancellationToken, apiKey, perPage, page);
         }
 
-        public static async Task<TickersResponse> GetTickersAsync(HttpClient client, CancellationToken cancellationToken, string apiKey, int perPage, int page, SortTickersBy? sort = null, TickerType? type = null, Market? market = null, Locale? locale = null, bool? active = null, string search = null)
+        public static async Task<TickersResponse> GetPolygonTickersAsync(this HttpClient client, CancellationToken cancellationToken, string apiKey, int perPage, int page, SortTickersBy? sort = null, TickerType? type = null, Market? market = null, Locale? locale = null, bool? active = null, string search = null)
         {
             if (perPage <= 0 || perPage > MaxResultsPerPage)
                 throw new ArgumentException($"Invalid {perPage} value - must be greater or equal to 1 and equal to or less than {MaxResultsPerPage}.", nameof(perPage));
@@ -50,12 +50,12 @@ namespace PolygonIo.WebApi
             return await GetResponse<TickersResponse>(client, url, cancellationToken);
         }
 
-        public static async Task<AggregateResponse> GetAggregatesBarsAsync(HttpClient client, string apiKey, string symbol, int multiplier, Timespan timespan, DateTimeOffset from, DateTimeOffset to, CancellationToken cancellationToken)
+        public static async Task<AggregateResponse> GetPolygonAggregatesBarsAsync(this HttpClient client, string apiKey, string symbol, int multiplier, Timespan timespan, DateTimeOffset from, DateTimeOffset to, CancellationToken cancellationToken)
         {
-            return await GetAggregatesBarsAsync(client, cancellationToken, apiKey, symbol, multiplier, timespan, from, to);
+            return await GetPolygonAggregatesBarsAsync(client, cancellationToken, apiKey, symbol, multiplier, timespan, from, to);
         }
 
-        public static async Task<AggregateResponse> GetAggregatesBarsAsync(HttpClient client, CancellationToken cancellationToken, string apiKey, string symbol, int multiplier, Timespan timespan, DateTimeOffset from, DateTimeOffset to, bool? unadjusted = null, Sort? sort = null, int? limit = null)
+        public static async Task<AggregateResponse> GetPolygonAggregatesBarsAsync(this HttpClient client, CancellationToken cancellationToken, string apiKey, string symbol, int multiplier, Timespan timespan, DateTimeOffset from, DateTimeOffset to, bool? unadjusted = null, Sort? sort = null, int? limit = null)
         {
             if (to < from)
                 throw new ArgumentException($"To '{to}' must not be earlier than from '{from}'.", nameof(to));
@@ -72,12 +72,12 @@ namespace PolygonIo.WebApi
             return result;
         }
 
-        public static async Task<GroupedDailyBarsResponse> GetGroupedDailyBarsAsync(HttpClient client, string apiKey, Locale locale, Market market, DateTimeOffset date, CancellationToken cancellationToken)
+        public static async Task<GroupedDailyBarsResponse> GetPolygonGroupedDailyBarsAsync(this HttpClient client, string apiKey, Locale locale, Market market, DateTimeOffset date, CancellationToken cancellationToken)
         {
-            return await GetGroupedDailyBarsAsync(client, cancellationToken, apiKey, locale, market, date);
+            return await GetPolygonGroupedDailyBarsAsync(client, cancellationToken, apiKey, locale, market, date);
         }
 
-        public static async Task<GroupedDailyBarsResponse> GetGroupedDailyBarsAsync(HttpClient client, CancellationToken cancellationToken, string apiKey, Locale locale, Market market, DateTimeOffset date, bool? unadjusted = null)
+        public static async Task<GroupedDailyBarsResponse> GetPolygonGroupedDailyBarsAsync(this HttpClient client, CancellationToken cancellationToken, string apiKey, Locale locale, Market market, DateTimeOffset date, bool? unadjusted = null)
         {
             var url = apiUrl
                         .AppendPathSegments(apiVersion, AggsString, GroupedString, LocaleString, locale, MarketString, market, date.ToString(DateFormat))
