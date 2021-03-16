@@ -2,15 +2,7 @@
 
 namespace PolygonIo.WebSocket
 {
-    public interface IEventDataTypeFactory
-    {
-        IQuote NewQuote();
-        ITrade NewTrade();
-        ITimeAggregate NewTimeAggregate();
-        IStatus NewStatus();
-    }
-
-    public class EventDataTypeFactory<TQuote, TTrade, TTimeAggregate, TStatus> : IEventDataTypeFactory
+    public class EventFactory<TQuote, TTrade, TTimeAggregate, TStatus> : IEventFactory
         where TQuote : IQuote, new()
         where TTrade : ITrade, new()
         where TTimeAggregate : ITimeAggregate, new()

@@ -2,7 +2,6 @@
 {
     public enum QuoteCondition
     {
-
         Regular = 0,
         RegularTwoSidedOpen = 1,
         RegularOneSidedOpen = 2,

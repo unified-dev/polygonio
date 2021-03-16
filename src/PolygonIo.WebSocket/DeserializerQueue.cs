@@ -12,7 +12,8 @@ using System.Text;
 
 namespace PolygonIo.WebSocket
 {
-    public class DeserializerQueue
+    // provides a queue of input bytes from an external source, to be buffered and processed by the deserializer
+    internal class DeserializerQueue
     {
         private readonly Channel<ReadOnlySequence<byte>> queue;
         private readonly ILogger<DeserializerQueue> logger;
@@ -27,91 +28,56 @@ namespace PolygonIo.WebSocket
             this.deserializer = deserializer;
         }
 
-        string GetFileName()
+        public void Start(Func<DeserializedData,Task> receiveMessagesFuncAsync)
         {
-            return "Polygon_" + DateTime.UtcNow.ToString()
-                                    .Replace(" ", "_")
-                                    .Replace(":", "-")
-                                    .Replace("/", "-") + ".log";
+            AssertNotRunning();
+
+            this.backgroundThread = Task.Run(async () =>
+            {               
+                while (cts.Token.IsCancellationRequested == false)
+                {
+                    try
+                    {
+                        // read data from queue until it arrives, or we are cancelled
+                        var item = await this.queue.Reader.ReadAsync(cts.Token);
+
+                        try
+                        {                            
+                            var data = this.deserializer.Deserialize(item); // deserialize
+                            await receiveMessagesFuncAsync(data); // dispatch
+                        }
+                        catch (Exception e)
+                        {
+                            this.logger.LogError($"Error deserializing '{Encoding.UTF8.GetString(item.ToArray())}' ({e}).");
+                        }
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        break;   // task cancelled, break from loop
+                    }
+                    catch (Exception e)
+                    {
+                        this.logger.LogError(e.ToString());
+                    }
+                }
+
+                this.queue.Writer.Complete(); // mark writer as complete (will not accept anymore writes)
+            });
         }
 
-        // no async code, just start without task
-        public void Start(Func<DeserializedData,Task> receiveMessagesAsync, bool logToFile = false)
+        void AssertNotRunning()
         {
-            if (backgroundThread != null)
+            if (this.backgroundThread != null)
                 throw new Exception("worker already running");
-
-            var fileName = GetFileName();
-
-            if (logToFile == true && File.Exists(fileName))
-            {
-                throw new Exception("Log file exists " + fileName);
-            }
-
-            backgroundThread = Task.Run(async () =>
-            {
-                if (logToFile == true)
-                {
-                    using var fs = new StreamWriter(fileName, false);
-
-                    while (cts.Token.IsCancellationRequested == false)
-                    {
-                        try
-                        {
-                            var item = await this.queue.Reader.ReadAsync(cts.Token);
-
-                            try
-                            {
-                                var text = Encoding.UTF8.GetString(item.ToArray());
-                                await fs.WriteAsync(text);
-
-                                var data = this.deserializer.Deserialize(item);
-
-                                await receiveMessagesAsync(data);
-                            }
-                            catch (Exception e)
-                            {
-                                this.logger.LogError($"error deserializing {System.Text.Encoding.UTF8.GetString(item.ToArray())} {e}");
-                            }
-                        }
-                        catch (OperationCanceledException) { break; }  // task cancelled, break from loop
-                        catch (Exception e) { this.logger.LogError(e.ToString()); }
-                    }
-                }
-                else
-                {
-                    while (cts.Token.IsCancellationRequested == false)
-                    {
-                        try
-                        {
-                            var item = await this.queue.Reader.ReadAsync(cts.Token);
-
-                            try
-                            {
-                                var data = this.deserializer.Deserialize(item);
-                                await receiveMessagesAsync(data);
-                            }
-                            catch (Exception e)
-                            {
-                                this.logger.LogError($"error deserializing {System.Text.Encoding.UTF8.GetString(item.ToArray())} {e}");
-                            }
-                        }
-                        catch (OperationCanceledException) { break; }  // task cancelled, break from loop
-                        catch (Exception e) { this.logger.LogError(e.ToString()); }
-                    }
-                }
-                this.queue.Writer.Complete();
-                await this.queue.Reader.Completion;
-            });
         }
 
         public async Task StopAsync()
         {
-            this.cts.Cancel();
-            // could take a while to shutdown, await the backgroundThread to complete
-            await this.backgroundThread;
+            this.cts.Cancel(); // initiate shutdown           
+            await this.backgroundThread; // await the backgroundThread to complete
         }
 
+        // add data to the queue from an external source
         public async Task AddFrame(ReadOnlySequence<byte> data)
         {
             await this.queue.Writer.WriteAsync(data);

@@ -3,8 +3,6 @@ using System.Threading.Tasks;
 
 namespace PolygonIo.WebSocket
 {
-
-
     public interface IReceivePolygonMessages
     {
         Task OnTimeAggregatePerSecondReceivedAsync(ITimeAggregate timeAggregate);

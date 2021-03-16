@@ -7,7 +7,6 @@ using System.Threading.Tasks;
 using System.Text.Json;
 using System.Collections.Generic;
 using System.Linq;
-using Microsoft.Extensions.Configuration;
 using Websocket.Client;
 using System.Net.WebSockets;
 using Websocket.Client.Models;
@@ -15,46 +14,36 @@ using PolygonIo.WebSocket.Deserializers;
 
 namespace PolygonIo.WebSocket
 {
-
     public class PolygonWebsocket
     {
         protected enum SubscriptionType { AggregatePerSecond, AggregatePerMinute, Trade, Quote };
 
         readonly WebsocketClient client;
         private readonly ILogger<PolygonWebsocket> logger;
-        private readonly DeserializerQueue deserializerQueue;
         Task subscriptionTask = null;
         CancellationTokenSource subscriptionTaskCts = null;
         CancellationTokenSource linkedCts = null;
         private readonly string apiKey;
+        private readonly IEventFactory eventFactory;
+        private readonly ILoggerFactory loggerFactory;
         private readonly Uri apiUri;
         const int SubsciptionChunkSize = 1000;
+        readonly IPolygonDeserializer polygonDeserializer;
+        private int isRunning;
+        PolygonDecoder polygonDecoder;
 
-        public PolygonWebsocket(IConfiguration configuration, DeserializerQueue deserializerQueue, ILogger<PolygonWebsocket> logger)
+        public PolygonWebsocket(string apiKey, string apiUrl, int reconnectTimeout, IEventFactory eventFactory, ILoggerFactory loggerFactory)
         {
-            this.logger = logger;
-            this.deserializerQueue = deserializerQueue;
-
-            // config
-            var section = configuration.GetSection("Polygon");
-            this.apiKey = section.GetValue<string>("ApiKey");
-            this.apiUri = new Uri(section.GetValue<string>("StocksStreamUri"));
+            this.logger = loggerFactory.CreateLogger<PolygonWebsocket>();
+            this.apiKey = apiKey;
+            this.eventFactory = eventFactory;
+            this.loggerFactory = loggerFactory;
+            this.apiUri = new Uri(apiUrl);
 
             this.client = new WebsocketClient(this.apiUri)
             {
-                ReconnectTimeout = TimeSpan.FromSeconds(section.GetValue<int>("ReconnectTimeout", 60))
+                ReconnectTimeout = TimeSpan.FromSeconds(reconnectTimeout)
             };
-
-            /*System.Timers.Timer aTimer = new System.Timers.Timer();
-            aTimer.Elapsed += (sender, onTimedEvent) =>
-            {
-                for(var i=0;i<10000;i++)
-                    // this.client.StreamFakeMessage(ResponseMessage.TextMessage(@"[{""ev"":""T"",""sym"":""JDST"",""i"":""31154"",""x"":11,""p"":215.37,""s"":500,""c"":[14,12,41],""t"":1588630929640,""z"":3}]"));
-                    this.client.StreamFakeMessage(ResponseMessage.TextMessage(@"[{""ev"":""T"",""sym"":""JDST"",""i"":""31154"",""x"":11,""p"":215.37,""s"":500,""c"":[14,12,41],""t"":1588630929640,""z"":3},{""ev"":""T"",""sym"":""JNUG"",""i"":""31154"",""x"":11,""p"":215.37,""s"":500,""c"":[14,12,41],""t"":1588630929640,""z"":3},{""ev"":""T"",""sym"":""MSFT"",""i"":""31154"",""x"":11,""p"":215.37,""s"":500,""c"":[14,12,41],""t"":1588630929640,""z"":3},{""ev"":""T"",""sym"":""TVIX"",""i"":""31154"",""x"":11,""p"":215.37,""s"":500,""c"":[14,12,41],""t"":1588630929640,""z"":3},{""ev"":""T"",""sym"":""SHOP"",""i"":""31154"",""x"":11,""p"":215.37,""s"":500,""c"":[14,12,41],""t"":1588630929640,""z"":3},{""ev"":""T"",""sym"":""TVIX"",""i"":""31154"",""x"":11,""p"":215.37,""s"":500,""c"":[14,12,41],""t"":1588630929640,""z"":3},{""ev"":""T"",""sym"":""DAL"",""i"":""31154"",""x"":11,""p"":215.37,""s"":500,""c"":[14,12,41],""t"":1588630929640,""z"":3},{ ""ev"": ""AM"", ""sym"": ""MSFT"", ""v"": 10204, ""av"": 200304, ""op"": 114.04, ""vw"": 114.4040, ""o"": 114.11, ""c"": 114.14, ""h"": 114.19, ""l"": 114.09, ""a"": 114.1314, ""s"": 1536036818784, ""e"": 1536036818784 }]"));
-            };
-            aTimer.Interval = 1000;
-            aTimer.Enabled = true;
-            */
         }
 
         protected void Authenticate()
@@ -147,58 +136,40 @@ namespace PolygonIo.WebSocket
             if (cancellationToken.IsCancellationRequested)
                 return;
 
-            try
-            {
-                // TODO: give memory direct, for now just read from string
-                // var sequence = new ReadOnlySequence<byte>(message.Binary);
-                // this is NOT ideal as involves a double copy but avoid buffer management for now
+            // TODO: give memory direct, for now just read from string
+            // var sequence = new ReadOnlySequence<byte>(message.Binary);
+            // this is NOT ideal as involves a double copy but avoid buffer management for now
 
-                var bytes = Encoding.UTF8.GetBytes(message.Text);
-                await this.deserializerQueue.AddFrame(new ReadOnlySequence<byte>(bytes));                
-            }
-            catch (JsonException e)
-            {
-                this.logger.LogError(e.ToString() + Environment.NewLine + e.InnerException?.ToString());
-            }
+            var bytes = Encoding.UTF8.GetBytes(message.Text);
+            var frame = new ReadOnlySequence<byte>(bytes);
+            await this.polygonDecoder.SendAsync(frame);          
         }
 
-        public async Task StartAsync(IEnumerable<string> tickers, CancellationToken stoppingToken, Func<DeserializedData,Task> receiveMessages, bool logToFile = false)
+        public async Task StartAsync(IEnumerable<string> tickers, CancellationToken stoppingToken, Func<DeserializedData,Task> receiveMessagesFunc)
         {
+            if (Interlocked.CompareExchange(ref this.isRunning, 1, 0) == 1)
+                throw new InvalidOperationException();
+
+            // setup decoder
+            this.polygonDecoder = new PolygonDecoder(
+                                        new Utf8JsonDeserializer(loggerFactory.CreateLogger<Utf8JsonDeserializer>(), this.eventFactory),
+                                        this.loggerFactory.CreateLogger<PolygonDecoder>(),
+                                        receiveMessagesFunc);
+
+            // setup client
             this.client.ReconnectionHappened.Subscribe(info => OnReconnection(info, tickers, stoppingToken), stoppingToken);
             this.client.MessageReceived.Subscribe(async (message) => await OnMessageReceived(message, stoppingToken), stoppingToken);
-
-            this.deserializerQueue.Start(receiveMessages, logToFile);
             await this.client.Start();           
         }
 
         public async Task StopAsync()
         {
-            await this.deserializerQueue.StopAsync();
+            if (this.isRunning == 0)
+                throw new InvalidOperationException();
+
+            // stopping the web client will stop the processing of new frames
             await this.client.Stop(WebSocketCloseStatus.NormalClosure, "");
-        }
-    }
-
-    // recommended to use default buffered approach given volume of messages, however helper below should you wish to call each method for each message
-    public static class PolygonWebsocketHelpers
-    {
-        public static Task StartAsyncUsingCallbacks(this PolygonWebsocket socket, IEnumerable<string> tickers, CancellationToken stoppingToken, IReceivePolygonMessages callbacks)
-        {
-            return socket.StartAsync(tickers, stoppingToken, async (data) => {
-                foreach (var quote in data.Quotes)
-                    await callbacks.OnQuoteReceivedAsync(quote);
-
-                foreach (var trade in data.Trades)
-                    await callbacks.OnTradeReceivedAsync(trade);
-
-                foreach (var aggregatePerSecond in data.PerSecondAggregates)
-                    await callbacks.OnTimeAggregatePerSecondReceivedAsync(aggregatePerSecond);
-
-                foreach (var aggregatePerMinute in data.PerMinuteAggregates)
-                    await callbacks.OnTimeAggregatePerMinuteReceivedAsync(aggregatePerMinute);
-
-                foreach (var status in data.Status)
-                    await callbacks.OnStatusReceivedAsync(status);
-            });
+            await this.polygonDecoder.Stop();            
         }
     }
 }
