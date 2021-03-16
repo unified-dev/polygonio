@@ -12,11 +12,32 @@ namespace PolygonIo.WebSocket
     internal class PolygonDecoder
     {
         readonly TransformBlock<ReadOnlySequence<byte>, DeserializedData> decodeBlock;
-        readonly ActionBlock<DeserializedData> outputBlock;
+        private readonly ILogger<PolygonDecoder> logger;
 
         public PolygonDecoder(IPolygonDeserializer polygonDeserializer, ILogger<PolygonDecoder> logger, Func<DeserializedData, Task> receiveMessages)
         {
-            this.decodeBlock = new TransformBlock<ReadOnlySequence<byte>, DeserializedData>((data) =>
+            this.logger = logger;
+            
+            this.decodeBlock = GetDecodeBlock(polygonDeserializer);
+
+            decodeBlock.LinkTo(new ActionBlock<DeserializedData>(async (deserializedData) =>
+            {
+                if (deserializedData != null)
+                    await receiveMessages(deserializedData);
+            }));            
+        }
+
+        public PolygonDecoder(IPolygonDeserializer polygonDeserializer, ILogger<PolygonDecoder> logger, ITargetBlock<DeserializedData> externalBlock)
+        {
+            this.logger = logger;
+
+            this.decodeBlock = GetDecodeBlock(polygonDeserializer);
+            decodeBlock.LinkTo(externalBlock);
+        }
+
+        TransformBlock<ReadOnlySequence<byte>, DeserializedData> GetDecodeBlock(IPolygonDeserializer polygonDeserializer)
+        {
+            return new TransformBlock<ReadOnlySequence<byte>, DeserializedData>((data) =>
             {
                 try
                 {
@@ -24,19 +45,12 @@ namespace PolygonIo.WebSocket
                 }
                 catch (Exception e)
                 {
-                    logger.LogError($"Error deserializing '{Encoding.UTF8.GetString(data.ToArray())}' ({e}).");
+                    this.logger.LogError($"Error deserializing '{Encoding.UTF8.GetString(data.ToArray())}' ({e}).");
                     return null;
                 }
             });
-
-            outputBlock = new ActionBlock<DeserializedData>(async (deserializedData) =>
-            {
-                if (deserializedData != null)
-                    await receiveMessages(deserializedData);
-            });
-
-            decodeBlock.LinkTo(outputBlock);
         }
+
 
         public async Task SendAsync(ReadOnlySequence<byte> bytes)
         {

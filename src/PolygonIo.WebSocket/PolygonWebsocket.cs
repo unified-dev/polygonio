@@ -10,6 +10,7 @@ using Websocket.Client;
 using System.Net.WebSockets;
 using Websocket.Client.Models;
 using PolygonIo.WebSocket.Deserializers;
+using System.Threading.Tasks.Dataflow;
 
 namespace PolygonIo.WebSocket
 {
@@ -154,10 +155,29 @@ namespace PolygonIo.WebSocket
                                         this.loggerFactory.CreateLogger<PolygonDecoder>(),
                                         receiveMessagesFunc);
 
+            await StartAsyncCore(tickers, stoppingToken);
+        }
+
+        public async Task StartAsync(IEnumerable<string> tickers, CancellationToken stoppingToken, ITargetBlock<DeserializedData> targetBlock)
+        {
+            if (Interlocked.CompareExchange(ref this.isRunning, 1, 0) == 1)
+                throw new InvalidOperationException();
+
+            // setup decoder
+            this.polygonDecoder = new PolygonDecoder(
+                                        new Utf8JsonDeserializer(loggerFactory.CreateLogger<Utf8JsonDeserializer>(), this.eventFactory),
+                                        this.loggerFactory.CreateLogger<PolygonDecoder>(),
+                                        targetBlock);
+
+            await StartAsyncCore(tickers, stoppingToken);
+        }
+
+        async Task StartAsyncCore(IEnumerable<string> tickers, CancellationToken stoppingToken)
+        {
             // setup client
             this.client.ReconnectionHappened.Subscribe(info => OnReconnection(info, tickers, stoppingToken), stoppingToken);
             this.client.MessageReceived.Subscribe(async (message) => await OnMessageReceived(message, stoppingToken), stoppingToken);
-            await this.client.Start();           
+            await this.client.Start();
         }
 
         public async Task StopAsync()

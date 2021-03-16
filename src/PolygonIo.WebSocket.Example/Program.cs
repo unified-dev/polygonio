@@ -1,9 +1,12 @@
 ﻿using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Newtonsoft.Json;
+using PolygonIo.WebSocket.Deserializers;
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Threading.Tasks.Dataflow;
 
 namespace PolygonIo.WebSocket.Example
 {
@@ -11,6 +14,8 @@ namespace PolygonIo.WebSocket.Example
     {
         static async Task Main(string[] args)
         {
+            using var loggerFactory = LoggerFactory.Create(builder => builder.AddConsole());
+
             var devEnvironmentVariable = Environment.GetEnvironmentVariable("NETCORE_ENVIRONMENT");
 
             var isDevelopment = string.IsNullOrEmpty(devEnvironmentVariable) ||
@@ -25,21 +30,35 @@ namespace PolygonIo.WebSocket.Example
                                             "wss://socket.polygon.io/stocks",
                                             60,
                                             new EventFactory<Quote, Trade, TimeAggregate, Status>(),
-                                            NullLoggerFactory.Instance);
+                                            loggerFactory);
 
             var cts = new CancellationTokenSource();
 
+            var tickers = new[] { "SPY", "VXX", "MSFT", "TSLA" };
+
+            /*
             await polygonWebSocket.StartAsync(
-                                new[] { "TSLA" },
-                                cts.Token,
-                                (messages) =>
-                                {
-                                    Console.WriteLine(JsonConvert.SerializeObject(messages, Formatting.Indented));
-                                    return Task.CompletedTask;
-                                });
+                                        tickers,
+                                        cts.Token,
+                                        (messages) =>
+                                        {
+                                           Console.WriteLine(JsonConvert.SerializeObject(messages, Formatting.Indented));
+                                           return Task.CompletedTask;
+                                        });
+            */
+
+
+            await polygonWebSocket.StartAsync(
+                                        tickers,
+                                        cts.Token,
+                                        new ActionBlock<DeserializedData>((data) =>
+                                        {
+                                            Console.WriteLine(JsonConvert.SerializeObject(data, Formatting.Indented));
+                                        }));
 
             Console.ReadKey();
             polygonWebSocket.StopAsync().Wait();
+
         }
     }
 }
