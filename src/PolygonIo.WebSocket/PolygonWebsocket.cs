@@ -4,7 +4,6 @@ using System.Buffers;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Text.Json;
 using System.Collections.Generic;
 using System.Linq;
 using Websocket.Client;
@@ -28,7 +27,6 @@ namespace PolygonIo.WebSocket
         private readonly ILoggerFactory loggerFactory;
         private readonly Uri apiUri;
         const int SubsciptionChunkSize = 1000;
-        readonly IPolygonDeserializer polygonDeserializer;
         private int isRunning;
         PolygonDecoder polygonDecoder;
 

@@ -1,5 +1,4 @@
-﻿using PolygonIo.WebApi.Model;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 
 namespace PolygonIo.WebApi.Model
 {

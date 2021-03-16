@@ -1,12 +1,10 @@
 ﻿using Newtonsoft.Json;
 using Nito.AsyncEx.Synchronous;
-using NPOI.XSSF.UserModel;
 using PolygonIo.WebApi;
 using PolygonIo.WebApi.Model;
 using System;
 using System.Management.Automation;
 using System.Net.Http;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 

@@ -4,8 +4,6 @@ using PolygonIo.WebSocket.Deserializers;
 using System.Buffers;
 using System.Linq;
 using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace PolygonIo.WebSocket.Tests
 {

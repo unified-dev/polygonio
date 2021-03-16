@@ -1,5 +1,4 @@
-﻿using Newtonsoft.Json;
-using Nito.AsyncEx.Synchronous;
+﻿using Nito.AsyncEx.Synchronous;
 using NPOI.XSSF.UserModel;
 using PolygonIo.WebApi;
 using PolygonIo.WebApi.Model;

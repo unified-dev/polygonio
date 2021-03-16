@@ -7,7 +7,6 @@ using System.Linq;
 using PolygonIo.WebSocket.Deserializers;
 using System.Threading.Channels;
 using System.Reactive.Linq;
-using System.IO;
 using System.Text;
 
 namespace PolygonIo.WebSocket
