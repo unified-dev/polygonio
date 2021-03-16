@@ -6,11 +6,16 @@ on:
   pull_request:
     branches: [ main ]
 
+env:
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  NUGET_URL: https://nuget.pkg.github.com/${{ github.REPOSITORY_OWNER }}/index.json
+
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
+    - name: Checkout source codes
+      uses: actions/checkout@v2
       with:
         fetch-depth: 0
         
@@ -18,6 +23,9 @@ jobs:
       uses: actions/setup-dotnet@v1
       with:
         dotnet-version: 5.0.x
+        source-url: ${{ env.NUGET_URL }}
+      env:
+        NUGET_AUTH_TOKEN: ${{ env.GITHUB_TOKEN }}
         
     - name: Run MinVer
       id: version
@@ -26,15 +34,12 @@ jobs:
         auto-increment: patch     #Valid values are major, minor, or patch (default)
         default-pre-release-phase: alpha
         
-    - name: Pack
-      run: dotnet pack --configuration Release -p:PackageVersion=${{steps.version.outputs.version}} --output ${{env.DOTNET_ROOT}}/nupkgs
+    - name: Create packages
+      run: dotnet pack --configuration Release -p:PackageVersion=${{ steps.version.outputs.version }} --output ${{ env.DOTNET_ROOT }}/nupkgs
       working-directory: src
       
-    - name: Push
-      run: dotnet nuget push '*.nupkg' --api-key 81616cf637a33104edb25b50f714932ed6ce2fc0 --source "https://nuget.pkg.github.com/unified-dev/index.json"
-      working-directory: ${{env.DOTNET_ROOT}}/nupkgs
-
-
-
+    - name: Push packages
+      run: dotnet nuget push '*.nupkg' --api-key ${{ env.GITHUB_TOKEN }} --source ${{ env.NUGET_URL }}
+      working-directory: ${{ env.DOTNET_ROOT }}/nupkgs
 
 
