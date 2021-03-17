@@ -149,7 +149,7 @@ namespace PolygonIo.WebSocket
             await this.polygonDecoder.SendAsync(frame);          
         }
 
-        public async Task StartAsync(IEnumerable<string> tickers, CancellationToken stoppingToken, Func<DeserializedData,Task> receiveMessagesFunc)
+        public async Task StartAsync(IEnumerable<string> tickers, Func<DeserializedData,Task> receiveMessagesFunc, CancellationToken stoppingToken)
         {
             if (Interlocked.CompareExchange(ref this.isRunning, 1, 0) == 1)
                 throw new InvalidOperationException();
@@ -163,7 +163,7 @@ namespace PolygonIo.WebSocket
             await StartAsyncCore(tickers, stoppingToken);
         }
 
-        public async Task StartAsync(IEnumerable<string> tickers, CancellationToken stoppingToken, ITargetBlock<DeserializedData> targetBlock)
+        public async Task StartAsync(IEnumerable<string> tickers, ITargetBlock<DeserializedData> targetBlock, CancellationToken stoppingToken)
         {
             if (Interlocked.CompareExchange(ref this.isRunning, 1, 0) == 1)
                 throw new InvalidOperationException();

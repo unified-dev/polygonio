@@ -48,11 +48,11 @@ namespace PolygonIo.WebSocket.Example
 
             await polygonWebSocket.StartAsync(
                                         tickers,
-                                        cts.Token,
                                         new ActionBlock<DeserializedData>((data) =>
                                         {
                                             Console.WriteLine(JsonConvert.SerializeObject(data, Formatting.Indented));
-                                        }));
+                                        }),
+                                        cts.Token);
 
             Console.ReadKey();
             polygonWebSocket.StopAsync().Wait();
