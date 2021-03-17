@@ -4,6 +4,13 @@
     <OutputType>Exe</OutputType>
     <TargetFramework>net5.0</TargetFramework>
     <UserSecretsId>56ec0c17-9949-4cfd-a240-c2b3ca1fe445</UserSecretsId>
+
+	  <VersionPrefix>1.0.0</VersionPrefix>
+	  <Authors>Unified Microsystems Developers</Authors>
+	  <Company>Unified Mictrosystems</Company>
+	  <PackageDescription></PackageDescription>
+
+	  <RepositoryUrl>https://github.com/unified-dev/polygonio</RepositoryUrl>
   </PropertyGroup>
 
   <ItemGroup>
