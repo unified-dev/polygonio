@@ -1,4 +1,4 @@
-﻿using PolygonIo.Model.Contracts;
+﻿using PolygonIo.WebSocket.Contracts;
 using System;
 
 namespace PolygonIo.WebSocket.Tests

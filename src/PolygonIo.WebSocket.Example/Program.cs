@@ -1,6 +1,5 @@
 ﻿using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Abstractions;
 using Newtonsoft.Json;
 using PolygonIo.WebSocket.Deserializers;
 using System;
@@ -29,7 +28,6 @@ namespace PolygonIo.WebSocket.Example
                                             configuration.GetSection("PolygonIo").GetValue<string>("ApiKey"),
                                             "wss://socket.polygon.io/stocks",
                                             60,
-                                            new EventFactory<Quote, Trade, TimeAggregate, Status>(),
                                             loggerFactory);
 
             var cts = new CancellationTokenSource();

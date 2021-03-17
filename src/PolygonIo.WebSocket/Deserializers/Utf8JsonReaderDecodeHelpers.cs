@@ -1,4 +1,4 @@
-﻿using PolygonIo.Model.Contracts;
+﻿using PolygonIo.WebSocket.Contracts;
 using System.Buffers;
 using System.Linq;
 using System.Text.Json;

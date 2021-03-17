@@ -31,13 +31,18 @@ namespace PolygonIo.WebSocket
         private int isRunning;
         PolygonDecoder polygonDecoder;
 
-        public PolygonWebsocket(string apiKey, string apiUrl, int reconnectTimeout, IEventFactory eventFactory, ILoggerFactory loggerFactory)
+        public PolygonWebsocket(string apiKey, string apiUrl, int reconnectTimeout, ILoggerFactory loggerFactory, IEventFactory eventFactory = null)
         {
             this.logger = loggerFactory.CreateLogger<PolygonWebsocket>();
-            this.apiKey = apiKey;
-            this.eventFactory = eventFactory;
+            this.apiKey = apiKey;            
             this.loggerFactory = loggerFactory;
             this.apiUri = new Uri(apiUrl);
+
+            // setup factory for which types from decoder are created with
+            if (eventFactory != null)
+                this.eventFactory = eventFactory;
+            else
+                this.eventFactory = new PolygonTypesEventFactory();
 
             this.client = new WebsocketClient(this.apiUri)
             {
