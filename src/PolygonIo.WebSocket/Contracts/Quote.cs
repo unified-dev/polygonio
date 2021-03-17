@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace PolygonIo.Model.Contracts
+namespace PolygonIo.WebSocket.Contracts
 {
     public class Quote : IQuote
     {

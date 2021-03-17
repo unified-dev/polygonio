@@ -1,4 +1,4 @@
-﻿namespace PolygonIo.Model.Contracts
+﻿namespace PolygonIo.WebSocket.Contracts
 {
     public interface IStatus
     {
