@@ -9,25 +9,25 @@ using System.Threading.Tasks.Dataflow;
 
 namespace PolygonIo.WebSocket
 {
-    internal class PolygonDecoder
+    internal class PolygonDataFrameDecoder
     {
-        readonly TransformBlock<ReadOnlySequence<byte>, DeserializedData> decodeBlock;
-        private readonly ILogger<PolygonDecoder> logger;
+        readonly TransformBlock<ReadOnlySequence<byte>, PolygonDataFrame> decodeBlock;
+        private readonly ILogger<PolygonDataFrameDecoder> logger;
 
-        public PolygonDecoder(IPolygonDeserializer polygonDeserializer, ILogger<PolygonDecoder> logger, Func<DeserializedData, Task> receiveMessages)
+        public PolygonDataFrameDecoder(IPolygonDeserializer polygonDeserializer, ILogger<PolygonDataFrameDecoder> logger, Func<PolygonDataFrame, Task> receiveMessages)
         {
             this.logger = logger;
             
             this.decodeBlock = GetDecodeBlock(polygonDeserializer);
 
-            decodeBlock.LinkTo(new ActionBlock<DeserializedData>(async (deserializedData) =>
+            decodeBlock.LinkTo(new ActionBlock<PolygonDataFrame>(async (deserializedData) =>
             {
                 if (deserializedData != null)
                     await receiveMessages(deserializedData);
             }));            
         }
 
-        public PolygonDecoder(IPolygonDeserializer polygonDeserializer, ILogger<PolygonDecoder> logger, ITargetBlock<DeserializedData> externalBlock)
+        public PolygonDataFrameDecoder(IPolygonDeserializer polygonDeserializer, ILogger<PolygonDataFrameDecoder> logger, ITargetBlock<PolygonDataFrame> externalBlock)
         {
             this.logger = logger;
 
@@ -35,9 +35,9 @@ namespace PolygonIo.WebSocket
             decodeBlock.LinkTo(externalBlock);
         }
 
-        TransformBlock<ReadOnlySequence<byte>, DeserializedData> GetDecodeBlock(IPolygonDeserializer polygonDeserializer)
+        TransformBlock<ReadOnlySequence<byte>, PolygonDataFrame> GetDecodeBlock(IPolygonDeserializer polygonDeserializer)
         {
-            return new TransformBlock<ReadOnlySequence<byte>, DeserializedData>((data) =>
+            return new TransformBlock<ReadOnlySequence<byte>, PolygonDataFrame>((data) =>
             {
                 try
                 {

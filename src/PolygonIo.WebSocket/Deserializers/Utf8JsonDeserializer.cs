@@ -18,7 +18,7 @@ namespace PolygonIo.WebSocket.Deserializers
             this.logger = logger;
         }
 
-        public DeserializedData Deserialize(ReadOnlySequence<byte> jsonData)
+        public PolygonDataFrame Deserialize(ReadOnlySequence<byte> jsonData)
         {
             var perSecondAggregates = new List<ITimeAggregate>();
             var perMinuteAggregates = new List<ITimeAggregate>();
@@ -63,7 +63,7 @@ namespace PolygonIo.WebSocket.Deserializers
                 }
             }
 
-            return new DeserializedData(trades, quotes, status, perSecondAggregates, perMinuteAggregates);
+            return new PolygonDataFrame(trades, quotes, status, perSecondAggregates, perMinuteAggregates);
         } 
     }
 }

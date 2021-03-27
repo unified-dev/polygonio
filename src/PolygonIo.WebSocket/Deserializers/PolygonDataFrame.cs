@@ -4,9 +4,9 @@ using System.Collections.Generic;
 
 namespace PolygonIo.WebSocket.Deserializers
 {
-    public class DeserializedData
+    public class PolygonDataFrame
     {
-        public DeserializedData(IEnumerable<ITrade> trades, IEnumerable<IQuote> quotes, IEnumerable<IStatus> status, IEnumerable<ITimeAggregate> perSecondAggregates, IEnumerable<ITimeAggregate> perMinuteAggregates)
+        public PolygonDataFrame(IEnumerable<ITrade> trades, IEnumerable<IQuote> quotes, IEnumerable<IStatus> status, IEnumerable<ITimeAggregate> perSecondAggregates, IEnumerable<ITimeAggregate> perMinuteAggregates)
         {
             Trades = trades ?? throw new ArgumentNullException(nameof(trades));
             Quotes = quotes ?? throw new ArgumentNullException(nameof(quotes));

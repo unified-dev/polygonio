@@ -48,7 +48,7 @@ namespace PolygonIo.WebSocket.Example
 
             await polygonWebSocket.StartAsync(
                                         tickers,
-                                        new ActionBlock<DeserializedData>((data) =>
+                                        new ActionBlock<PolygonDataFrame>((data) =>
                                         {
                                             Console.WriteLine(JsonConvert.SerializeObject(data, Formatting.Indented));
                                         }),

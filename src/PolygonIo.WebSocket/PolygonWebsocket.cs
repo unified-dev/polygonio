@@ -29,7 +29,7 @@ namespace PolygonIo.WebSocket
         private readonly Uri apiUri;
         const int SubsciptionChunkSize = 1000;
         private int isRunning;
-        PolygonDecoder polygonDecoder;
+        PolygonDataFrameDecoder polygonDecoder;
 
         public PolygonWebsocket(string apiKey, string apiUrl, int reconnectTimeout, ILoggerFactory loggerFactory, IEventFactory eventFactory = null)
         {
@@ -66,14 +66,14 @@ namespace PolygonIo.WebSocket
 
         protected void Subscribe(IEnumerable<string> symbols, SubscriptionType subscriptionType, CancellationToken cancellationToken)
         {
-            logger.LogInformation($"subscribing to {subscriptionType} for {symbols.Count()} symbols");
+            logger.LogInformation($"Subscribing to {subscriptionType} for {symbols.Count()} symbols.");
 
             var chunks = symbols
                             .Select((s, i) => new { Value = s, Index = i })
                             .GroupBy(x => x.Index / SubsciptionChunkSize)
                             .Select(grp => grp.Select(x => x.Value));
 
-            this.logger.LogInformation($"subscribing to {symbols.Count()} symbols for {subscriptionType.ToString()} updates (in {chunks.Count()} batches)");
+            this.logger.LogDebug($"Subscribing to {symbols.Count()} symbols for {subscriptionType.ToString()} updates (in {chunks.Count()} batches).");
 
             foreach (var chunk in chunks)
             {
@@ -119,7 +119,7 @@ namespace PolygonIo.WebSocket
             if (cancellationToken.IsCancellationRequested)
                 return;
 
-            this.logger.LogInformation($"Reconnection happened, type: {info}");
+            this.logger.LogInformation($"Reconnection happened, type: {info}.");
 
             // cancel any previous running subscription task
             if (subscriptionTask != null && subscriptionTask.IsCompleted == false)
@@ -149,29 +149,29 @@ namespace PolygonIo.WebSocket
             await this.polygonDecoder.SendAsync(frame);          
         }
 
-        public async Task StartAsync(IEnumerable<string> tickers, Func<DeserializedData,Task> receiveMessagesFunc, CancellationToken stoppingToken)
+        public async Task StartAsync(IEnumerable<string> tickers, Func<PolygonDataFrame,Task> receiveMessagesFunc, CancellationToken stoppingToken)
         {
             if (Interlocked.CompareExchange(ref this.isRunning, 1, 0) == 1)
                 throw new InvalidOperationException();
 
             // setup decoder
-            this.polygonDecoder = new PolygonDecoder(
+            this.polygonDecoder = new PolygonDataFrameDecoder(
                                         new Utf8JsonDeserializer(loggerFactory.CreateLogger<Utf8JsonDeserializer>(), this.eventFactory),
-                                        this.loggerFactory.CreateLogger<PolygonDecoder>(),
+                                        this.loggerFactory.CreateLogger<PolygonDataFrameDecoder>(),
                                         receiveMessagesFunc);
 
             await StartAsyncCore(tickers, stoppingToken);
         }
 
-        public async Task StartAsync(IEnumerable<string> tickers, ITargetBlock<DeserializedData> targetBlock, CancellationToken stoppingToken)
+        public async Task StartAsync(IEnumerable<string> tickers, ITargetBlock<PolygonDataFrame> targetBlock, CancellationToken stoppingToken)
         {
             if (Interlocked.CompareExchange(ref this.isRunning, 1, 0) == 1)
                 throw new InvalidOperationException();
 
             // setup decoder
-            this.polygonDecoder = new PolygonDecoder(
+            this.polygonDecoder = new PolygonDataFrameDecoder(
                                         new Utf8JsonDeserializer(loggerFactory.CreateLogger<Utf8JsonDeserializer>(), this.eventFactory),
-                                        this.loggerFactory.CreateLogger<PolygonDecoder>(),
+                                        this.loggerFactory.CreateLogger<PolygonDataFrameDecoder>(),
                                         targetBlock);
 
             await StartAsyncCore(tickers, stoppingToken);
