@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.Logging;
 using PolygonIo.WebSocket.Contracts;
+using PolygonIo.WebSocket.Factory;
 using System.Collections.Generic;
 using System.Text.Json;
 

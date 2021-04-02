@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 
-namespace PolygonIo.WebSocket
+namespace PolygonIo.WebSocket.Contracts
 {
     internal class TradeComparer : EqualityComparer<ITrade>
     {

@@ -38,18 +38,6 @@ namespace PolygonIo.WebSocket.Example
 
             var tickers = new[] { "SPY", "VXX", "MSFT", "TSLA" };
 
-            /*
-            await polygonWebSocket.StartAsync(
-                                        tickers,
-                                        cts.Token,
-                                        (messages) =>
-                                        {
-                                           Console.WriteLine(JsonConvert.SerializeObject(messages, Formatting.Indented));
-                                           return Task.CompletedTask;
-                                        });
-            */
-
-
             polygonWebSocket.Start(
                                 tickers,
                                 new ActionBlock<DeserializedData>((data) =>

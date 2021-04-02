@@ -1,4 +1,4 @@
-﻿namespace PolygonIo.WebSocket
+﻿namespace PolygonIo.WebSocket.Contracts
 {
     internal static class StreamFieldNames
     {

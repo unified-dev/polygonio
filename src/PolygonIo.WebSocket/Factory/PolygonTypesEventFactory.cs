@@ -1,6 +1,7 @@
 ﻿using PolygonIo.WebSocket.Contracts;
+using PolygonIo.WebSocket.Factory;
 
-namespace PolygonIo.WebSocket
+namespace PolygonIo.WebSocket.Factory
 {
     // to be used where client wants to take a dependency on this packages types
     public class PolygonTypesEventFactory : IEventFactory

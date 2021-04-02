@@ -1,6 +1,6 @@
 ﻿using PolygonIo.WebSocket.Contracts;
 
-namespace PolygonIo.WebSocket
+namespace PolygonIo.WebSocket.Factory
 {
     public interface IEventFactory
     {

@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using System.Collections.Generic;
 using System.Threading.Tasks.Dataflow;
 using System.Linq;
+using PolygonIo.WebSocket.Socket;
 
 namespace PolygonIo.WebSocket
 {
@@ -22,21 +23,15 @@ namespace PolygonIo.WebSocket
 
         public PolygonConnection(string apiKey, string apiUrl, int reconnectTimeout, ITargetBlock<byte[]> targetBlock, ILoggerFactory loggerFactory)
         {
+            this.apiKey = apiKey ?? throw new ArgumentNullException(nameof(apiKey));
+            this.targetBlock = targetBlock ?? throw new ArgumentNullException(nameof(targetBlock));
+
             if (string.IsNullOrEmpty(apiUrl))
                 throw new ArgumentException($"'{nameof(apiUrl)}' cannot be null or empty.", nameof(apiUrl));
 
-            this.logger = loggerFactory.CreateLogger<PolygonConnection>();
-            this.apiKey = apiKey ?? throw new ArgumentNullException(nameof(apiKey));
-            this.targetBlock = targetBlock ?? throw new ArgumentNullException(nameof(targetBlock));
+            this.logger = loggerFactory.CreateLogger<PolygonConnection>();                        
             this.mainCancellationTokenSource = new CancellationTokenSource();
-
-            /* this.client = new WebsocketClient(this.apiUri)
-             {
-                 ReconnectTimeout = TimeSpan.FromSeconds(reconnectTimeout)
-             };
-            */
-
-            this.managedWebSocket = new ManagedWebSocket(apiUrl, targetBlock);
+            this.managedWebSocket = new ManagedWebSocket(apiUrl, this.targetBlock);
 
             this.managedWebSocket.OnConnectedAsync = new Func<Task>( async () =>
             {
@@ -89,9 +84,7 @@ namespace PolygonIo.WebSocket
         public void Start(IEnumerable<string> tickers)
         {
             this.tickers = tickers;
-
             this.managedWebSocket.Start();
-            // await this.client.Start();
         }
     }
 }

@@ -7,7 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 
-namespace PolygonIo.WebSocket
+namespace PolygonIo.WebSocket.Socket
 {
     public class ManagedWebSocket
     {

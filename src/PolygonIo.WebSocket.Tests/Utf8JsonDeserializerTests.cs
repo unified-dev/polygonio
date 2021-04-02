@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging.Abstractions;
 using NUnit.Framework;
 using PolygonIo.WebSocket.Deserializers;
+using PolygonIo.WebSocket.Factory;
 using System.Buffers;
 using System.Linq;
 using System.Text;

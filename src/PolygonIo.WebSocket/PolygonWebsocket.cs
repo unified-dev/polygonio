@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using System.Collections.Generic;
 using PolygonIo.WebSocket.Deserializers;
 using System.Threading.Tasks.Dataflow;
+using PolygonIo.WebSocket.Factory;
 
 namespace PolygonIo.WebSocket
 {
