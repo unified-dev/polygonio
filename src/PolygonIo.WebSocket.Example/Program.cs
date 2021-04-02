@@ -2,6 +2,8 @@
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using PolygonIo.WebSocket.Deserializers;
+using Serilog;
+using Serilog.Debugging;
 using System;
 using System.Threading;
 using System.Threading.Tasks;
@@ -13,7 +15,9 @@ namespace PolygonIo.WebSocket.Example
     {
         static async Task Main(string[] args)
         {
-            using var loggerFactory = LoggerFactory.Create(builder => builder.AddConsole());
+            using var log = new LoggerConfiguration().WriteTo.Console().CreateLogger();
+            var loggerFactory = new LoggerFactory().AddSerilog(log);
+            var logger = loggerFactory.CreateLogger<Program>();
 
             var devEnvironmentVariable = Environment.GetEnvironmentVariable("NETCORE_ENVIRONMENT");
 
@@ -46,17 +50,15 @@ namespace PolygonIo.WebSocket.Example
             */
 
 
-            await polygonWebSocket.StartAsync(
-                                        tickers,
-                                        new ActionBlock<DeserializedData>((data) =>
-                                        {
-                                            Console.WriteLine(JsonConvert.SerializeObject(data, Formatting.Indented));
-                                        }),
-                                        cts.Token);
+            polygonWebSocket.Start(
+                                tickers,
+                                new ActionBlock<DeserializedData>((data) =>
+                                {
+                                    logger.LogInformation(JsonConvert.SerializeObject(data, Formatting.Indented));
+                                }));
 
             Console.ReadKey();
-            polygonWebSocket.StopAsync().Wait();
-
+            await polygonWebSocket.StopAsync();
         }
     }
 }

@@ -1,6 +1,5 @@
 ﻿using Microsoft.Extensions.Logging;
 using PolygonIo.WebSocket.Contracts;
-using System.Buffers;
 using System.Collections.Generic;
 using System.Text.Json;
 
@@ -14,11 +13,11 @@ namespace PolygonIo.WebSocket.Deserializers
 
         public Utf8JsonDeserializer(ILogger<Utf8JsonDeserializer> logger, IEventFactory eventDataTypeFactory)
         {
-            this.eventDataTypeFactory = eventDataTypeFactory;
+            this.eventDataTypeFactory = eventDataTypeFactory ?? throw new System.ArgumentNullException(nameof(eventDataTypeFactory));
             this.logger = logger;
         }
 
-        public DeserializedData Deserialize(ReadOnlySequence<byte> jsonData)
+        public DeserializedData Deserialize(byte[] jsonData)
         {
             var perSecondAggregates = new List<ITimeAggregate>();
             var perMinuteAggregates = new List<ITimeAggregate>();

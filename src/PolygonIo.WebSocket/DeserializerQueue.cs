@@ -6,7 +6,6 @@ using System.Threading.Tasks;
 using System.Linq;
 using PolygonIo.WebSocket.Deserializers;
 using System.Threading.Channels;
-using System.Reactive.Linq;
 using System.Text;
 
 namespace PolygonIo.WebSocket
@@ -14,7 +13,7 @@ namespace PolygonIo.WebSocket
     // provides a queue of input bytes from an external source, to be buffered and processed by the deserializer
     internal class DeserializerQueue
     {
-        private readonly Channel<ReadOnlySequence<byte>> queue;
+        private readonly Channel<byte[]> queue;
         private readonly ILogger<DeserializerQueue> logger;
         private readonly IPolygonDeserializer deserializer;
         Task backgroundThread = null;
@@ -22,7 +21,7 @@ namespace PolygonIo.WebSocket
 
         public DeserializerQueue(ILogger<DeserializerQueue> logger, IPolygonDeserializer deserializer)
         {
-            this.queue = Channel.CreateUnbounded<ReadOnlySequence<byte>>();
+            this.queue = Channel.CreateUnbounded<byte[]>();
             this.logger = logger;
             this.deserializer = deserializer;
         }
@@ -77,7 +76,7 @@ namespace PolygonIo.WebSocket
         }
 
         // add data to the queue from an external source
-        public async Task AddFrame(ReadOnlySequence<byte> data)
+        public async Task AddFrame(byte[] data)
         {
             await this.queue.Writer.WriteAsync(data);
         }

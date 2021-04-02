@@ -1,9 +1,7 @@
-﻿using System.Buffers;
-
-namespace PolygonIo.WebSocket.Deserializers
+﻿namespace PolygonIo.WebSocket.Deserializers
 {
     public interface IPolygonDeserializer
     {
-        DeserializedData Deserialize(ReadOnlySequence<byte> jsonData);
+        DeserializedData Deserialize(byte[] data);
     }
 }
