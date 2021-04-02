@@ -31,17 +31,23 @@ namespace PolygonIo.WebSocket
 
             this.logger = loggerFactory.CreateLogger<PolygonConnection>();                        
             this.mainCancellationTokenSource = new CancellationTokenSource();
-            this.managedWebSocket = new ManagedWebSocket(apiUrl, this.targetBlock);
+            this.managedWebSocket = new ManagedWebSocket(apiUrl, OnConnected, OnDisonnected, this.targetBlock, loggerFactory.CreateLogger<ManagedWebSocket>());
 
-            this.managedWebSocket.OnConnectedAsync = new Func<Task>( async () =>
-            {
-                await WaitForSubscriptionTaskAsync();
+        }
 
-                // start a new subscription
-                this.subscriptionCancelationTokenSource = new CancellationTokenSource();
-                this.linkedCts = CancellationTokenSource.CreateLinkedTokenSource(new[] { subscriptionCancelationTokenSource.Token, this.mainCancellationTokenSource.Token });
-                this.subscriptionTask = Task.Factory.StartNew(() => SubscriptionTask(tickers, linkedCts.Token), linkedCts.Token);
-            });      
+        async Task OnConnected()
+        {
+            await WaitForSubscriptionTaskAsync();
+
+            // start a new subscription
+            this.subscriptionCancelationTokenSource = new CancellationTokenSource();
+            this.linkedCts = CancellationTokenSource.CreateLinkedTokenSource(new[] { subscriptionCancelationTokenSource.Token, this.mainCancellationTokenSource.Token });
+            this.subscriptionTask = Task.Factory.StartNew(() => SubscriptionTask(tickers, linkedCts.Token), linkedCts.Token);
+        }
+
+        async Task OnDisonnected()
+        {
+
         }
 
         async Task WaitForSubscriptionTaskAsync()

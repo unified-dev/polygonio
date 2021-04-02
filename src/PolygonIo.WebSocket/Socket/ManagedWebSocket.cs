@@ -1,6 +1,5 @@
-﻿using System;
-using System.IO;
-using System.Linq;
+﻿using Microsoft.Extensions.Logging;
+using System;
 using System.Net.WebSockets;
 using System.Text;
 using System.Threading;
@@ -9,177 +8,148 @@ using System.Threading.Tasks.Dataflow;
 
 namespace PolygonIo.WebSocket.Socket
 {
-    public class ManagedWebSocket
+    public class ManagedWebSocket : IDisposable
     {
+        readonly StateMachine stateMachine;
         private const int ReceiveChunkSize = 2048;
         private const int SendChunkSize = 2048;
 
         Task lifetimeTask;
-        bool isConnected;
-        bool isRunning;
-        TimeSpan ReconnectTime { get; set; } = TimeSpan.FromSeconds(20);
         TimeSpan KeepAliveInterval { get; set; } = TimeSpan.FromSeconds(20);
 
         private ClientWebSocket webSocket;
         private readonly Uri uri;
         private readonly ITargetBlock<byte[]> target;
+        private readonly ILogger<ManagedWebSocket> logger;
         private CancellationTokenSource cancellationTokenSource;
 
-        public Func<Task> OnConnectedAsync { get; set; } = null;
-        public Func<Task> OnDisconnectedAsync { get; set; } = null;
+        private readonly Func<Task> notifyOnConnected;
+        private readonly Func<Task> notifyOnDisconnected;
 
-        public ManagedWebSocket(string uri, ITargetBlock<byte[]> target)
+        public ManagedWebSocket(string uri, Func<Task> onConnected, Func<Task> onDisconnected, ITargetBlock<byte[]> target, ILogger<ManagedWebSocket> logger)
         {
+            this.stateMachine = new StateMachine(OnDisconnected, OnConnecting, OnConnected, OnResetting);
+            this.notifyOnConnected = onConnected;
+            this.notifyOnDisconnected = onDisconnected;
             this.uri = new Uri(uri);
             this.target = target;
+            this.logger = logger;
+        }
+
+        private void OnConnecting()
+        {
+            this.lifetimeTask = Task.Run(async () =>
+            {
+                this.logger.LogInformation($"{nameof(ManagedWebSocket.OnConnecting)}");
+                this.cancellationTokenSource = new CancellationTokenSource();
+                this.webSocket = new ClientWebSocket();
+                webSocket.Options.KeepAliveInterval = KeepAliveInterval;
+                try
+                {
+                    await this.webSocket.ConnectAsync(this.uri, cancellationTokenSource.Token);
+                }
+                catch(WebSocketException ex)
+                {
+                    await this.stateMachine.FireAsync(Trigger.Reset);
+                }
+                this.stateMachine.Fire(Trigger.SetConnectComplete);
+            });
+        }
+        
+        private void OnDisconnected()
+        {
+            // if (this.lastConnected == null || this.lastConnected + ReconnectTime < DateTimeOffset.UtcNow)           
+            this.stateMachine.Fire(Trigger.Connect);
+        }
+
+        private async Task OnResetting()
+        {
+            this.cancellationTokenSource?.Cancel();
+
+            if (this.lifetimeTask != null)
+                await this.lifetimeTask;
+
+            this.cancellationTokenSource?.Dispose();
+            this.lifetimeTask?.Dispose();
+            this.cancellationTokenSource = null;
+            this.lifetimeTask = null;
+
+            this.stateMachine.Fire(Trigger.SetResetComplete);
+        }
+
+        private void OnConnected()
+        {
+            this.logger.LogInformation($"{nameof(ManagedWebSocket.OnConnected)}");
+            this.lifetimeTask = Task.Run(LifetimeTask);
         }
 
         public async Task SendAsync(string message)
         {
-            if (isConnected == false)
+            await SendAsync(Encoding.UTF8.GetBytes(message), WebSocketMessageType.Text);
+        }
+
+        public async Task SendAsync(byte[] data, WebSocketMessageType webSocketMessageType)
+        {
+            if (this.stateMachine.State != State.Connected)
+                throw new Exception($"{nameof(ManagedWebSocket)} is not yet connected");
+
+            try
             {
-                throw new Exception("Connection is not open.");
+                await webSocket
+                        .SendAsync(data, webSocketMessageType, SendChunkSize, this.cancellationTokenSource.Token)
+                        .ConfigureAwait(false);
             }
-
-            var messageBuffer = Encoding.UTF8.GetBytes(message);
-            var messagesCount = (int)Math.Ceiling((double)messageBuffer.Length / SendChunkSize);
-
-            for (var i = 0; i < messagesCount; i++)
+            catch (WebSocketException ex)
             {
-                var offset = (SendChunkSize * i);
-                var count = SendChunkSize;
-                var lastMessage = ((i + 1) == messagesCount);
-
-                if ((count * (i + 1)) > messageBuffer.Length)
-                {
-                    count = messageBuffer.Length - offset;
-                }
-
-                await webSocket.SendAsync(new ArraySegment<byte>(messageBuffer, offset, count), WebSocketMessageType.Text, lastMessage, this.cancellationTokenSource.Token);
+                this.logger.LogError(ex, ex.Message);
+                await this.stateMachine.FireAsync(Trigger.Reset);
             }
         }
 
         public void Start()
         {
-            if (isRunning)
-                return;
-            else
-                isRunning = true;
-
-            if (this.cancellationTokenSource != null)
-                this.cancellationTokenSource.Dispose();
-            this.cancellationTokenSource = new CancellationTokenSource();
-
-            this.lifetimeTask = Task.Run(async () => await LifetimeTask());
+            this.stateMachine.Fire(Trigger.Start);
         }
 
-        public async Task Stop()
+     /*   public async Task Stop()
         {
-            this.cancellationTokenSource.Cancel();
-            await this.lifetimeTask;
+            this.stateMachine.Fire(Trigger.Start);
         }
-
+     */
         private async Task LifetimeTask()
         {
             while (cancellationTokenSource.Token.IsCancellationRequested == false)
             {
                 try
                 {
-                    this.webSocket = new ClientWebSocket();
-                    webSocket.Options.KeepAliveInterval = KeepAliveInterval;
-                    await this.webSocket.ConnectAsync(this.uri, cancellationTokenSource.Token);
-                    this.isConnected = true;
-                    await OnConnectedAsync();
-                    await ReadAsync(target);                    
+                    this.logger.LogInformation($"{nameof(ManagedWebSocket.LifetimeTask)}");
+                    await notifyOnConnected();
+                    await this.webSocket.ReceiveFramesLoopAsync(target.SendAsync, ReceiveChunkSize, this.cancellationTokenSource.Token);
+                    break;
                 }
                 catch (WebSocketException ex)
                 {
-                    await OnDisconnectedAsync();
+                    this.logger.LogError(ex.Message, ex);
+                    await notifyOnDisconnected();
                 }
-                finally
-                {
-                    webSocket.Dispose();
-                }
-                await Task.Delay(this.ReconnectTime, cancellationTokenSource.Token);
-            }
-        }
 
-        private async Task ReadAsync(ITargetBlock<byte[]> target)
+                // await Task.Delay(this.ReconnectTime, cancellationTokenSource.Token);
+            }
+            await this.stateMachine.FireAsync(Trigger.Reset);
+        }     
+
+        public void Dispose()
         {
-            var buffer = new ArraySegment<byte>(new byte[ReceiveChunkSize]);
+            this.cancellationTokenSource?.Cancel();
 
-            do
-            {
-                WebSocketReceiveResult result;
-                byte[] resultArrayWithTrailing = null;
-                var resultArraySize = 0;
-                var isResultArrayCloned = false;
-                MemoryStream ms = null;
+            /* how to wait for lifetime task to complete */
+           // if (this.lifetimeTask != null)
+           //     await this.lifetimeTask;
 
-                while (true)
-                {
-                    result = await webSocket.ReceiveAsync(buffer, cancellationTokenSource.Token);
-                    var currentChunk = buffer.Array;
-                    var currentChunkSize = result.Count;
-
-                    var isFirstChunk = resultArrayWithTrailing == null;
-
-                    if (isFirstChunk)
-                    {
-                        // first chunk, use buffer as reference, do not allocate anything
-                        resultArraySize += currentChunkSize;
-                        resultArrayWithTrailing = currentChunk;
-                        isResultArrayCloned = false;
-                    }
-                    else if (currentChunk == null)
-                    {
-                        // weird chunk, do nothing
-                    }
-                    else
-                    {
-                        // received more chunks, lets merge them via memory stream
-                        if (ms == null)
-                        {
-                            // create memory stream and insert first chunk
-                            ms = new MemoryStream();
-                            ms.Write(resultArrayWithTrailing, 0, resultArraySize);
-                        }
-
-                        // insert current chunk
-                        ms.Write(currentChunk, buffer.Offset, currentChunkSize);
-                    }
-
-                    if (result.EndOfMessage)
-                        break;
-
-                    if (isResultArrayCloned)
-                        continue;
-
-                    // we got more chunks incoming, need to clone first chunk
-                    resultArrayWithTrailing = resultArrayWithTrailing?.ToArray();
-                    isResultArrayCloned = true;
-                }
-
-                if (result.MessageType == WebSocketMessageType.Close)
-                {
-                    await OnDisconnectedAsync();
-                }
-                else
-                {
-                    if (ms != null)
-                    {
-                        ms.Seek(0, SeekOrigin.Begin);
-                        await target.SendAsync(ms.ToArray());
-                        ms.Dispose();
-                    }
-                    else
-                    {
-                        Array.Resize(ref resultArrayWithTrailing, resultArraySize);
-                        await target.SendAsync(resultArrayWithTrailing);
-                    }
-                }
-            }
-            while (webSocket.State == WebSocketState.Open && !this.cancellationTokenSource.IsCancellationRequested);
+            this.cancellationTokenSource?.Dispose();
+            this.lifetimeTask?.Dispose();
+            this.cancellationTokenSource = null;
+            this.lifetimeTask = null;
         }
     }
 }

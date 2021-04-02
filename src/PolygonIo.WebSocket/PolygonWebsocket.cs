@@ -62,7 +62,6 @@ namespace PolygonIo.WebSocket
                 return;
 
             await this.polygonConnection.StopAsync();     
-
         }
     }
 }
