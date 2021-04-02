@@ -9,7 +9,7 @@ using PolygonIo.WebSocket.Socket;
 
 namespace PolygonIo.WebSocket
 {
-    public class PolygonConnection
+    public class PolygonConnection : IDisposable
     {
         private readonly string apiKey;
         private readonly ManagedWebSocket managedWebSocket;
@@ -20,8 +20,9 @@ namespace PolygonIo.WebSocket
         private readonly CancellationTokenSource mainCancellationTokenSource = null;
         private CancellationTokenSource linkedCts = null;
         private IEnumerable<string> tickers;
+        bool isDisposing;
 
-        public PolygonConnection(string apiKey, string apiUrl, int reconnectTimeout, ITargetBlock<byte[]> targetBlock, ILoggerFactory loggerFactory)
+        public PolygonConnection(string apiKey, string apiUrl, ITargetBlock<byte[]> targetBlock, ILoggerFactory loggerFactory)
         {
             this.apiKey = apiKey ?? throw new ArgumentNullException(nameof(apiKey));
             this.targetBlock = targetBlock ?? throw new ArgumentNullException(nameof(targetBlock));
@@ -75,22 +76,23 @@ namespace PolygonIo.WebSocket
             await this.managedWebSocket.SubscribeToTrades(tickers, cancellationToken);            
         }
 
-        public async Task StopAsync()
-        {
-            this.targetBlock.Complete();
-            this.mainCancellationTokenSource.Cancel();
-            await WaitForSubscriptionTaskAsync();
-            // stopping the web client will stop the processing of new frames
-
-
-            // FIIIIIIIIIIIIIIIIIIIIIIIIIIXXX
-
-           // await this.client.Stop(WebSocketCloseStatus.NormalClosure, "");            
-        }
         public void Start(IEnumerable<string> tickers)
         {
             this.tickers = tickers;
             this.managedWebSocket.Start();
+        }
+
+        public void Dispose()
+        {
+            if (isDisposing)
+                return;
+
+            this.isDisposing = true;
+
+            this.managedWebSocket.Dispose();
+            this.targetBlock.Complete();
+            this.mainCancellationTokenSource.Cancel();
+            WaitForSubscriptionTaskAsync().Wait();            
         }
     }
 }

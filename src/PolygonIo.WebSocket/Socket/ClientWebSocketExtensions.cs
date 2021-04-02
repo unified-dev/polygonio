@@ -10,12 +10,12 @@ namespace PolygonIo.WebSocket.Socket
 {
     static class ClientWebSocketExtensions
     {
-        static public async Task SendAsync(this ClientWebSocket webSocket, string message, int sendChunkSize, CancellationToken cancellationToken)
+        static public async Task SendAsChunksAsync(this ClientWebSocket webSocket, string message, int sendChunkSize, CancellationToken cancellationToken)
         {
-            await webSocket.SendAsync(Encoding.UTF8.GetBytes(message), WebSocketMessageType.Text, sendChunkSize, cancellationToken);
+            await webSocket.SendAsChunksAsync(Encoding.UTF8.GetBytes(message), WebSocketMessageType.Text, sendChunkSize, cancellationToken);
         }
 
-        static public async Task SendAsync(this ClientWebSocket webSocket, byte[] data, WebSocketMessageType type, int sendChunkSize, CancellationToken cancellationToken)
+        static public async Task SendAsChunksAsync(this ClientWebSocket webSocket, byte[] data, WebSocketMessageType type, int sendChunkSize, CancellationToken cancellationToken)
         {
             var messagesCount = (int)Math.Ceiling((double)data.Length / sendChunkSize);
 

@@ -11,7 +11,7 @@ using PolygonIo.WebSocket.Factory;
 namespace PolygonIo.WebSocket
 {
 
-    public class PolygonWebsocket
+    public class PolygonWebsocket : IDisposable
     {        
         private readonly ILogger<PolygonWebsocket> logger;
         private readonly IEventFactory eventFactory;
@@ -44,7 +44,7 @@ namespace PolygonIo.WebSocket
                 }
             });
 
-            this.polygonConnection = new PolygonConnection(apiKey, apiUrl, reconnectTimeout, decodeBlock, loggerFactory);            
+            this.polygonConnection = new PolygonConnection(apiKey, apiUrl, decodeBlock, loggerFactory);            
         }
 
         public void Start(IEnumerable<string> tickers, ITargetBlock<DeserializedData> targetBlock)
@@ -56,12 +56,9 @@ namespace PolygonIo.WebSocket
             this.polygonConnection.Start(tickers);
         }
 
-        public async Task StopAsync()
+        public void Dispose()
         {
-            if (this.isRunning == 0)
-                return;
-
-            await this.polygonConnection.StopAsync();     
+            this.polygonConnection.Dispose();
         }
     }
 }

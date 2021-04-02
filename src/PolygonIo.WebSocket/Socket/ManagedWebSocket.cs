@@ -14,14 +14,15 @@ namespace PolygonIo.WebSocket.Socket
         private const int ReceiveChunkSize = 2048;
         private const int SendChunkSize = 2048;
 
-        Task lifetimeTask;
-        TimeSpan KeepAliveInterval { get; set; } = TimeSpan.FromSeconds(20);
+        Task backgroundReaderTask;
+        TimeSpan KeepAliveInterval { get; set; } = TimeSpan.FromSeconds(15);
 
         private ClientWebSocket webSocket;
         private readonly Uri uri;
         private readonly ITargetBlock<byte[]> target;
         private readonly ILogger<ManagedWebSocket> logger;
         private CancellationTokenSource cancellationTokenSource;
+        bool isDisposing;
 
         private readonly Func<Task> notifyOnConnected;
         private readonly Func<Task> notifyOnDisconnected;
@@ -38,49 +39,45 @@ namespace PolygonIo.WebSocket.Socket
 
         private void OnConnecting()
         {
-            this.lifetimeTask = Task.Run(async () =>
+            this.backgroundReaderTask = Task.Run(async () =>
             {
                 this.logger.LogInformation($"{nameof(ManagedWebSocket.OnConnecting)}");
                 this.cancellationTokenSource = new CancellationTokenSource();
                 this.webSocket = new ClientWebSocket();
                 webSocket.Options.KeepAliveInterval = KeepAliveInterval;
+
                 try
                 {
                     await this.webSocket.ConnectAsync(this.uri, cancellationTokenSource.Token);
                 }
                 catch(WebSocketException ex)
                 {
+                    this.logger.LogError(ex.Message, ex);
                     await this.stateMachine.FireAsync(Trigger.Reset);
                 }
+
                 this.stateMachine.Fire(Trigger.SetConnectComplete);
             });
         }
         
         private void OnDisconnected()
         {
-            // if (this.lastConnected == null || this.lastConnected + ReconnectTime < DateTimeOffset.UtcNow)           
-            this.stateMachine.Fire(Trigger.Connect);
+            this.logger.LogInformation($"{nameof(ManagedWebSocket.OnDisconnected)} with {nameof(isDisposing)}={isDisposing}");
+            if (isDisposing == false)
+                this.stateMachine.Fire(Trigger.Connect);
         }
 
-        private async Task OnResetting()
+        private void OnResetting()
         {
-            this.cancellationTokenSource?.Cancel();
-
-            if (this.lifetimeTask != null)
-                await this.lifetimeTask;
-
-            this.cancellationTokenSource?.Dispose();
-            this.lifetimeTask?.Dispose();
-            this.cancellationTokenSource = null;
-            this.lifetimeTask = null;
-
+            this.logger.LogInformation($"{nameof(ManagedWebSocket.OnResetting)}");
+            FreeResources();
             this.stateMachine.Fire(Trigger.SetResetComplete);
         }
 
         private void OnConnected()
         {
             this.logger.LogInformation($"{nameof(ManagedWebSocket.OnConnected)}");
-            this.lifetimeTask = Task.Run(LifetimeTask);
+            this.backgroundReaderTask = Task.Run(BackgroundReaderTask);
         }
 
         public async Task SendAsync(string message)
@@ -91,15 +88,15 @@ namespace PolygonIo.WebSocket.Socket
         public async Task SendAsync(byte[] data, WebSocketMessageType webSocketMessageType)
         {
             if (this.stateMachine.State != State.Connected)
-                throw new Exception($"{nameof(ManagedWebSocket)} is not yet connected");
+                throw new Exception($"{nameof(ManagedWebSocket)} is not yet connected.");
 
             try
             {
                 await webSocket
-                        .SendAsync(data, webSocketMessageType, SendChunkSize, this.cancellationTokenSource.Token)
+                        .SendAsChunksAsync(data, webSocketMessageType, SendChunkSize, this.cancellationTokenSource.Token)
                         .ConfigureAwait(false);
             }
-            catch (WebSocketException ex)
+            catch (Exception ex)
             {
                 this.logger.LogError(ex, ex.Message);
                 await this.stateMachine.FireAsync(Trigger.Reset);
@@ -110,46 +107,47 @@ namespace PolygonIo.WebSocket.Socket
         {
             this.stateMachine.Fire(Trigger.Start);
         }
-
-     /*   public async Task Stop()
+     
+        private async Task BackgroundReaderTask()
         {
-            this.stateMachine.Fire(Trigger.Start);
-        }
-     */
-        private async Task LifetimeTask()
-        {
-            while (cancellationTokenSource.Token.IsCancellationRequested == false)
+            try
             {
-                try
-                {
-                    this.logger.LogInformation($"{nameof(ManagedWebSocket.LifetimeTask)}");
-                    await notifyOnConnected();
-                    await this.webSocket.ReceiveFramesLoopAsync(target.SendAsync, ReceiveChunkSize, this.cancellationTokenSource.Token);
-                    break;
-                }
-                catch (WebSocketException ex)
-                {
-                    this.logger.LogError(ex.Message, ex);
-                    await notifyOnDisconnected();
-                }
+                this.logger.LogInformation($"{nameof(ManagedWebSocket.BackgroundReaderTask)}");
+                await notifyOnConnected();
 
-                // await Task.Delay(this.ReconnectTime, cancellationTokenSource.Token);
+                // returns when the internal frame loop completes with websocket close, or by throwing an exception
+                await this.webSocket.ReceiveFramesLoopAsync(target.SendAsync, ReceiveChunkSize, this.cancellationTokenSource.Token);
             }
+            catch (Exception ex)
+            {
+                this.logger.LogError(ex.Message, ex);
+                await notifyOnDisconnected();
+            }
+
             await this.stateMachine.FireAsync(Trigger.Reset);
         }     
 
+        public void FreeResources()
+        {
+            this.logger.LogDebug($"{nameof(ManagedWebSocket.FreeResources)}");
+            this.cancellationTokenSource?.Cancel();
+            this.backgroundReaderTask?.Wait();
+            this.cancellationTokenSource?.Dispose();
+            this.backgroundReaderTask?.Dispose();
+        }
+
         public void Dispose()
         {
+            if (isDisposing)
+                return;
+
+            isDisposing = true;
+
+            this.logger.LogDebug($"{nameof(ManagedWebSocket.FreeResources)}");
             this.cancellationTokenSource?.Cancel();
-
-            /* how to wait for lifetime task to complete */
-           // if (this.lifetimeTask != null)
-           //     await this.lifetimeTask;
-
+            this.backgroundReaderTask?.Wait();
             this.cancellationTokenSource?.Dispose();
-            this.lifetimeTask?.Dispose();
-            this.cancellationTokenSource = null;
-            this.lifetimeTask = null;
+            this.backgroundReaderTask?.Dispose();
         }
     }
 }

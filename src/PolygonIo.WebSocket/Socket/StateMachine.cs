@@ -9,15 +9,14 @@ namespace PolygonIo.WebSocket.Socket
 
     class StateMachine : StateMachine<State, Trigger>
     {
-        public StateMachine(Action OnDisconnected, Action OnConnecting, Action OnConnected, Func<Task> OnResetting) : base(State.Stopped)
+        public StateMachine(Action OnDisconnected, Action OnConnecting, Action OnConnected, Action OnResetting) : base(State.Stopped)
         {
             this.Configure(State.Stopped)
                 .Permit(Trigger.Start, State.Disconnected);
 
             this.Configure(State.Disconnected)
                 .OnEntry(OnDisconnected)
-                .Permit(Trigger.Connect, State.Connecting)
-                .Permit(Trigger.Stop, State.Stopped);
+                .Permit(Trigger.Connect, State.Connecting);
 
             this.Configure(State.Connecting)
                 .OnEntry(OnConnecting)
@@ -29,7 +28,7 @@ namespace PolygonIo.WebSocket.Socket
                 .Permit(Trigger.Reset, State.Resetting);
 
             this.Configure(State.Resetting)
-                .OnEntryAsync(OnResetting)
+                .OnEntry(OnResetting)
                 .Permit(Trigger.SetResetComplete, State.Disconnected);
         }
     }
