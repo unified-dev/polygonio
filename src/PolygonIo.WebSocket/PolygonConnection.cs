@@ -11,9 +11,9 @@ namespace PolygonIo.WebSocket
 {
     public class PolygonConnection
     {
-        private readonly ManagedWebSocket managedWebSocket;
-        private readonly ILogger<PolygonConnection> logger;        
         private readonly string apiKey;
+        private readonly ManagedWebSocket managedWebSocket;
+        private readonly ILogger<PolygonConnection> logger;                
         private readonly ITargetBlock<byte[]> targetBlock;
         private Task subscriptionTask = null;
         private CancellationTokenSource subscriptionCancelationTokenSource = null;
@@ -62,7 +62,7 @@ namespace PolygonIo.WebSocket
         async Task SubscriptionTask(IEnumerable<string> tickers, CancellationToken cancellationToken)
         {
             this.logger.LogInformation($"Subscribing to {tickers.Count()} symbols.");
-            await this.managedWebSocket.Authenticate(this.apiKey, cancellationToken);
+            await this.managedWebSocket.SendAuthentication(this.apiKey, cancellationToken);
             await this.managedWebSocket.SubscribeToAggregatePerSecond(tickers, cancellationToken);
             await this.managedWebSocket.SubscribeToAggregatePerMinute(tickers, cancellationToken);
             await this.managedWebSocket.SubscribeToQuotes(tickers, cancellationToken);

@@ -20,14 +20,14 @@ namespace PolygonIo.WebSocket
         private readonly TransformBlock<byte[], DeserializedData> decodeBlock;
         private readonly PolygonConnection polygonConnection;
 
-        public PolygonWebsocket(string apiKey, string apiUrl, int reconnectTimeout, ILoggerFactory loggerFactory, IEventFactory eventFactory = null)
+        public PolygonWebsocket(string apiKey, string apiUrl, int reconnectTimeout, ILoggerFactory loggerFactory)
+            : this(apiKey, apiUrl, reconnectTimeout, loggerFactory, new PolygonTypesEventFactory())
         {
-            // setup factory for which types from decoder are created with
-            if (eventFactory != null)
-                this.eventFactory = eventFactory;
-            else
-                this.eventFactory = new PolygonTypesEventFactory();
+        }
 
+        public PolygonWebsocket(string apiKey, string apiUrl, int reconnectTimeout, ILoggerFactory loggerFactory, IEventFactory eventFactory)
+        {
+            this.eventFactory = eventFactory ?? throw new ArgumentNullException(nameof(eventFactory));
             this.logger = loggerFactory.CreateLogger<PolygonWebsocket>();
             this.deserializer = new Utf8JsonDeserializer(loggerFactory.CreateLogger<Utf8JsonDeserializer>(), this.eventFactory);
 
@@ -44,7 +44,7 @@ namespace PolygonIo.WebSocket
                 }
             });
 
-            this.polygonConnection = new PolygonConnection(apiKey, apiUrl, reconnectTimeout, decodeBlock, loggerFactory);
+            this.polygonConnection = new PolygonConnection(apiKey, apiUrl, reconnectTimeout, decodeBlock, loggerFactory);            
         }
 
         public void Start(IEnumerable<string> tickers, ITargetBlock<DeserializedData> targetBlock)

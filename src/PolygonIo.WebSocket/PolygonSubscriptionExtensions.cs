@@ -15,7 +15,7 @@ namespace PolygonIo.WebSocket
         enum SubscriptionType { AggregatePerSecond, AggregatePerMinute, Trade, Quote };
         const int SubsciptionChunkSize = 1000;
 
-        static public async Task Authenticate(this ManagedWebSocket websocket, string apiKey, CancellationToken cancellationToken)
+        static public async Task SendAuthentication(this ManagedWebSocket websocket, string apiKey, CancellationToken cancellationToken)
         {
             await websocket.SendAsync("{\"action\":\"auth\",\"params\":\"" + apiKey + "\"}");
         }
