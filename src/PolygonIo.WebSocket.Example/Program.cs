@@ -45,6 +45,8 @@ namespace PolygonIo.WebSocket.Example
                                 }));
 
             Console.ReadKey();
+
+            polygonWebSocket.Stop();
         }
     }
 }
