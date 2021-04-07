@@ -46,8 +46,10 @@ namespace PolygonIo.WebSocket
                 {
                     this.logger.LogInformation($"Connecting.");
                     await webSocket.ConnectAsync(uri, cancellationToken);
+                    
                     this.logger.LogInformation($"Authenticating.");
                     await webSocket.SendAuthentication(this.apiKey, cancellationToken);
+                    
                     this.logger.LogInformation($"Subscribing to {tickers.Count()} symbols.");
                     await webSocket.SubscribeToAggregatePerSecond(tickers, cancellationToken);
                     await webSocket.SubscribeToAggregatePerMinute(tickers, cancellationToken);

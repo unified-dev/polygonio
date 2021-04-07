@@ -15,6 +15,7 @@ namespace PolygonIo.WebSocket
         private readonly ILogger<PolygonWebsocket> logger;
         private readonly IPolygonDeserializer deserializer;
         private int isRunning;
+        private IDisposable link;
         private readonly TransformBlock<byte[], DeserializedData> decodeBlock;
         private readonly PolygonConnection polygonConnection;
 
@@ -47,18 +48,25 @@ namespace PolygonIo.WebSocket
         public void Start(IEnumerable<string> tickers, ITargetBlock<DeserializedData> targetBlock)
         {
             if (Interlocked.CompareExchange(ref this.isRunning, 1, 0) == 1)
+            {
                 this.logger.LogDebug($"{nameof(PolygonWebsocket)} is already running.");
+                return;
+            }
 
-            decodeBlock.LinkTo(targetBlock);
+            this.link = decodeBlock.LinkTo(targetBlock);
             this.polygonConnection.Start(tickers);
         }
 
         public void Stop()
         {
             if (Interlocked.CompareExchange(ref this.isRunning, 0, 1) == 0)
+            {
                 this.logger.LogDebug($"{nameof(PolygonWebsocket)} is not running.");
+                return;
+            }
 
             this.polygonConnection.Stop();
+            this.link?.Dispose(); // unlink
         }
 
         public void Dispose()

@@ -35,7 +35,7 @@ namespace PolygonIo.WebSocket.Example
 
             var cts = new CancellationTokenSource();
 
-            var tickers = new[] { "SPY", "VXX", "MSFT", "TSLA" };
+            var tickers = new[] { "SPY", "QQQ", "IWM", "VXX", "MSFT", "TSLA" };
 
             polygonWebSocket.Start(
                                 tickers,
