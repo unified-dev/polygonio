@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "PolygonIo.Utils.StreamRecorder": {
+      "commandName": "Project",
+      "commandLineArgs": "MSFT TSLA NNOX RBLX SPY QQQ IWM"
+    }
+  }
+}

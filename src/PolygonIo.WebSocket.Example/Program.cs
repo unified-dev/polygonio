@@ -3,7 +3,6 @@ using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using PolygonIo.WebSocket.Deserializers;
 using Serilog;
-using Serilog.Debugging;
 using System;
 using System.Threading;
 using System.Threading.Tasks;
@@ -13,7 +12,7 @@ namespace PolygonIo.WebSocket.Example
 {
     class Program
     {
-        static async Task Main(string[] args)
+        static void Main(string[] args)
         {
             using var log = new LoggerConfiguration().WriteTo.Console().CreateLogger();
             var loggerFactory = new LoggerFactory().AddSerilog(log);
@@ -28,7 +27,7 @@ namespace PolygonIo.WebSocket.Example
                                         .AddUserSecrets<Program>()
                                         .Build();
 
-            var polygonWebSocket = new PolygonWebsocket(
+            using var polygonWebSocket = new PolygonWebsocket(
                                             configuration.GetSection("PolygonIo").GetValue<string>("ApiKey"),
                                             "wss://socket.polygon.io/stocks",
                                             60,
@@ -45,8 +44,6 @@ namespace PolygonIo.WebSocket.Example
                                     logger.LogInformation(JsonConvert.SerializeObject(data, Formatting.Indented));
                                 }));
 
-            Console.ReadKey();
-            polygonWebSocket.Dispose();
             Console.ReadKey();
         }
     }

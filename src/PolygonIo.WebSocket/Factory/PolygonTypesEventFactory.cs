@@ -1,5 +1,4 @@
 ﻿using PolygonIo.WebSocket.Contracts;
-using PolygonIo.WebSocket.Factory;
 
 namespace PolygonIo.WebSocket.Factory
 {

@@ -1,5 +1,4 @@
-﻿using PolygonIo.WebSocket.Contracts;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 
 namespace PolygonIo.WebSocket.Contracts

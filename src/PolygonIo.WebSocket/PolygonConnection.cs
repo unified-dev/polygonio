@@ -5,94 +5,118 @@ using System.Threading.Tasks;
 using System.Collections.Generic;
 using System.Threading.Tasks.Dataflow;
 using System.Linq;
-using PolygonIo.WebSocket.Socket;
+using System.Net.WebSockets;
 
 namespace PolygonIo.WebSocket
 {
     public class PolygonConnection : IDisposable
     {
-        private readonly string apiKey;
-        private readonly ManagedWebSocket managedWebSocket;
-        private readonly ILogger<PolygonConnection> logger;                
+        const int ReceiveChunkSize = 2048;
+        
+        private readonly ILogger<PolygonConnection> logger;
         private readonly ITargetBlock<byte[]> targetBlock;
-        private Task subscriptionTask = null;
-        private CancellationTokenSource subscriptionCancelationTokenSource = null;
-        private readonly CancellationTokenSource mainCancellationTokenSource = null;
-        private CancellationTokenSource linkedCts = null;
-        private IEnumerable<string> tickers;
-        bool isDisposing;
+        private readonly TimeSpan keepAliveInterval;        
+        private readonly Uri uri;
+        private readonly string apiKey;
 
-        public PolygonConnection(string apiKey, string apiUrl, ITargetBlock<byte[]> targetBlock, ILoggerFactory loggerFactory)
+        private Task loopTask;
+        private CancellationTokenSource cts = null;
+
+        public PolygonConnection(string apiKey, string apiUrl, ITargetBlock<byte[]> targetBlock, TimeSpan keepAliveInterval, ILoggerFactory loggerFactory)
         {
+            this.uri = string.IsNullOrEmpty(apiUrl) ? throw new ArgumentException($"'{nameof(apiUrl)}' cannot be null or empty.", nameof(apiUrl)) : new Uri(apiUrl);
             this.apiKey = apiKey ?? throw new ArgumentNullException(nameof(apiKey));
             this.targetBlock = targetBlock ?? throw new ArgumentNullException(nameof(targetBlock));
-
-            if (string.IsNullOrEmpty(apiUrl))
-                throw new ArgumentException($"'{nameof(apiUrl)}' cannot be null or empty.", nameof(apiUrl));
-
-            this.logger = loggerFactory.CreateLogger<PolygonConnection>();                        
-            this.mainCancellationTokenSource = new CancellationTokenSource();
-            this.managedWebSocket = new ManagedWebSocket(apiUrl, OnConnected, OnDisonnected, this.targetBlock, loggerFactory.CreateLogger<ManagedWebSocket>());
-
+            this.keepAliveInterval = keepAliveInterval;            
+            this.logger = loggerFactory.CreateLogger<PolygonConnection>();
         }
 
-        async Task OnConnected()
+        async Task Loop(IEnumerable<string> tickers, CancellationToken cancellationToken)
         {
-            await WaitForSubscriptionTaskAsync();
+            this.logger.LogInformation($"Entering {nameof(PolygonConnection.Loop)}.");
 
-            // start a new subscription
-            this.subscriptionCancelationTokenSource = new CancellationTokenSource();
-            this.linkedCts = CancellationTokenSource.CreateLinkedTokenSource(new[] { subscriptionCancelationTokenSource.Token, this.mainCancellationTokenSource.Token });
-            this.subscriptionTask = Task.Factory.StartNew(() => SubscriptionTask(tickers, linkedCts.Token), linkedCts.Token);
-        }
-
-        async Task OnDisonnected()
-        {
-
-        }
-
-        async Task WaitForSubscriptionTaskAsync()
-        {
-            // cancel any previous running subscription task
-            if (subscriptionTask != null && subscriptionTask.IsCompleted == false)
+            while (cancellationToken.IsCancellationRequested == false)
             {
-                // wait for previous thread to shutdown
-                this.subscriptionCancelationTokenSource.Cancel();
-                await this.subscriptionTask;
+                var webSocket = new ClientWebSocket();
+                webSocket.Options.KeepAliveInterval = this.keepAliveInterval;
+                var buffer = new ArraySegment<byte>(new byte[ReceiveChunkSize]);
+                var resultProcessor = new WebSocketReceiveResultProcessor();
 
-                // dispose to prevent resource leak
-                this.subscriptionCancelationTokenSource.Dispose();
-                this.linkedCts.Dispose();
+                try
+                {
+                    this.logger.LogInformation($"Connecting.");
+                    await webSocket.ConnectAsync(uri, cancellationToken);
+                    this.logger.LogInformation($"Authenticating.");
+                    await webSocket.SendAuthentication(this.apiKey, cancellationToken);
+                    this.logger.LogInformation($"Subscribing to {tickers.Count()} symbols.");
+                    await webSocket.SubscribeToAggregatePerSecond(tickers, cancellationToken);
+                    await webSocket.SubscribeToAggregatePerMinute(tickers, cancellationToken);
+                    await webSocket.SubscribeToQuotes(tickers, cancellationToken);
+                    await webSocket.SubscribeToTrades(tickers, cancellationToken);
+
+                    while (webSocket.State == WebSocketState.Open && cancellationToken.IsCancellationRequested == false)
+                    {
+                        var result = await webSocket.ReceiveAsync(buffer, cancellationToken);
+                        var isEndOfMessage = resultProcessor.Receive(result, buffer, out var frame);
+
+                        if (isEndOfMessage)
+                        {
+                            if (frame == null)
+                                break; // end of mesage with no data means socket closed - break so we can reconnect
+
+                            await this.targetBlock.SendAsync(frame);
+                            resultProcessor.Reset();
+                        }
+                    }
+                }
+                catch (WebSocketException ex)
+                {
+                    this.logger.LogError(ex.Message, ex);
+                }
+                finally
+                {
+                    webSocket.Dispose();
+                }
             }
-        }
-
-        async Task SubscriptionTask(IEnumerable<string> tickers, CancellationToken cancellationToken)
-        {
-            this.logger.LogInformation($"Subscribing to {tickers.Count()} symbols.");
-            await this.managedWebSocket.SendAuthentication(this.apiKey, cancellationToken);
-            await this.managedWebSocket.SubscribeToAggregatePerSecond(tickers, cancellationToken);
-            await this.managedWebSocket.SubscribeToAggregatePerMinute(tickers, cancellationToken);
-            await this.managedWebSocket.SubscribeToQuotes(tickers, cancellationToken);
-            await this.managedWebSocket.SubscribeToTrades(tickers, cancellationToken);            
         }
 
         public void Start(IEnumerable<string> tickers)
         {
-            this.tickers = tickers;
-            this.managedWebSocket.Start();
+            this.cts = new CancellationTokenSource();
+            this.loopTask = Task.Factory.StartNew(async () => await Loop(tickers, this.cts.Token));
+        }
+
+        public void Stop()
+        {
+            StopLoopAndFreeResources();
+        }
+
+        private void StopLoopAndFreeResources()
+        {
+            cts?.Cancel();
+            loopTask?.Wait();
+            cts?.Dispose();
+            loopTask?.Dispose();
+
+            this.cts = null;
+            this.loopTask = null;
         }
 
         public void Dispose()
         {
-            if (isDisposing)
-                return;
+            // Dispose of unmanaged resources.
+            Dispose(true);
 
-            this.isDisposing = true;
+            // Suppress finalization.
+            GC.SuppressFinalize(this);
+        }
 
-            this.managedWebSocket.Dispose();
-            this.targetBlock.Complete();
-            this.mainCancellationTokenSource.Cancel();
-            WaitForSubscriptionTaskAsync().Wait();            
+        protected virtual void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                StopLoopAndFreeResources();
+            }
         }
     }
 }
