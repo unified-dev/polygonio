@@ -14,6 +14,12 @@ namespace PolygonIo.Utils.StreamRecorder
     {
         static void Main(string[] args)
         {
+            if (args.Length == 0)
+            {
+                Console.WriteLine("Error: please supply tickers to subscribe to as arguments.");
+                return;
+            }
+
             using var log = new LoggerConfiguration().WriteTo.Console().CreateLogger();
             var loggerFactory = new LoggerFactory().AddSerilog(log);
             var logger = loggerFactory.CreateLogger<Program>();
@@ -29,7 +35,9 @@ namespace PolygonIo.Utils.StreamRecorder
 
             var apiKey = configuration.GetSection("PolygonIo").GetValue<string>("ApiKey");
 
-            using var binaryWriter = new BinaryWriter(File.OpenWrite($"polygonio_dump_{DateTime.Now.ToString("yyyyMMddTHHmmss")}.dmp"));
+            var filename = $"polygonio_dump_{DateTime.Now.ToString("yyyyMMddTHHmmss")}.dmp";
+
+            using var binaryWriter = new BinaryWriter(File.OpenWrite(filename));
 
             var lastUpdate = DateTime.UtcNow;
             var count = 0;
@@ -41,24 +49,18 @@ namespace PolygonIo.Utils.StreamRecorder
 
                 var span = (DateTime.UtcNow - lastUpdate);
 
-                if (span.TotalSeconds > 1)
+                if (span.TotalSeconds > 10)
                 {
                     Console.WriteLine($"Written {count:n0} bytes in {span.TotalSeconds} seconds.");
                     lastUpdate = DateTime.UtcNow;
                 }
             });
 
-            if (args.Length == 0)
-            {
-                Console.WriteLine("Error: please supply tickers to subscribe to as arguments.");
-                return;
-            }
-
             using var polygonConnection = new PolygonConnection(apiKey, "wss://socket.polygon.io/stocks", blockWriter, TimeSpan.FromSeconds(15), loggerFactory);
 
             polygonConnection.Start(args);
 
-            Console.WriteLine("Now recording, press any key to stop");
+            Console.WriteLine($"Now recording to {filename}, press any key to stop...");
             Console.ReadKey();
 
             polygonConnection.Stop();
