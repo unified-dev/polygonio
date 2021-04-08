@@ -1,4 +1,4 @@
-name: .NET
+name: Github .NET
 
 on:
   push:
