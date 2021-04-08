@@ -7,7 +7,7 @@ on:
     branches: [ main ]
 
 env:
-  NUGET_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  NUGET_TOKEN: ${{ secrets.NUGET_API_KEY }}
   NUGET_URL: https://api.nuget.org/v3/index.json
 
 jobs:
