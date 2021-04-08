@@ -8,7 +8,7 @@ on:
 
 env:
   NUGET_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-  NUGET_URL: https://api.nuget.org
+  NUGET_URL: https://api.nuget.org/v3/index.json
 
 jobs:
   build:
