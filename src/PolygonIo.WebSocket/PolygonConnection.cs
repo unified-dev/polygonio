@@ -90,13 +90,22 @@ namespace PolygonIo.WebSocket
 
         public void Stop()
         {
-            StopLoopAndFreeResources();
-        }
-
-        private void StopLoopAndFreeResources()
-        {
             cts?.Cancel();
             loopTask?.Wait();
+            cts?.Dispose();
+            loopTask?.Dispose();
+
+            this.cts = null;
+            this.loopTask = null;
+        }
+
+        private async Task StopAsync()
+        {
+            cts?.Cancel();
+
+            if (loopTask != null)
+                await loopTask;
+
             cts?.Dispose();
             loopTask?.Dispose();
 
@@ -117,7 +126,7 @@ namespace PolygonIo.WebSocket
         {
             if (disposing)
             {
-                StopLoopAndFreeResources();
+                Stop();
             }
         }
     }
