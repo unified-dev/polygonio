@@ -9,7 +9,6 @@ using PolygonIo.WebSocket.Factory;
 
 namespace PolygonIo.WebSocket
 {
-
     public class PolygonWebsocket : IDisposable
     {        
         private readonly ILogger<PolygonWebsocket> logger;

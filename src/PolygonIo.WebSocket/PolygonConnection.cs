@@ -67,7 +67,6 @@ namespace PolygonIo.WebSocket
                                 break; // end of mesage with no data means socket closed - break so we can reconnect
 
                             await this.targetBlock.SendAsync(frame);
-                            resultProcessor.Reset();
                         }
                     }
                 }

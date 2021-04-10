@@ -5,6 +5,7 @@ using PolygonIo.WebSocket.Deserializers;
 using Serilog;
 using System;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Threading.Tasks.Dataflow;
 
@@ -58,7 +59,7 @@ namespace PolygonIo.Utils.StreamRecorder
 
             using var polygonConnection = new PolygonConnection(apiKey, "wss://socket.polygon.io/stocks", blockWriter, TimeSpan.FromSeconds(15), loggerFactory);
 
-            polygonConnection.Start(args);
+            polygonConnection.Start(args.Select(x => x.ToUpper()));
 
             Console.WriteLine($"Now recording to {filename}, press any key to stop...");
             Console.ReadKey();

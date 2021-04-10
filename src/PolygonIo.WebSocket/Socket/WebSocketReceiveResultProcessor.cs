@@ -3,84 +3,47 @@ using System.Buffers;
 using System.Linq;
 using System.Net.WebSockets;
 using System.IO;
+using System.Collections.Generic;
 
 namespace PolygonIo.WebSocket
 {
     class WebSocketReceiveResultProcessor
     {
-        byte[] resultArrayWithTrailing;
-        int resultArraySize;
-        bool isResultArrayCloned;
-        MemoryStream ms;
-
-        public void Reset()
-        {
-            ms?.Dispose();
-            resultArrayWithTrailing = null;
-            resultArraySize = 0;
-            isResultArrayCloned = false;
-            ms = null;
-        }
+        Chunk<byte> startChunk = null;
+        Chunk<byte> currentChunk = null;
 
         public bool Receive(WebSocketReceiveResult result, ArraySegment<byte> buffer, out byte[] frame)
         {
-            var currentChunk = buffer.Array;
-            var currentChunkSize = result.Count;
-            var isFirstChunk = resultArrayWithTrailing == null;
+            if (result.EndOfMessage && result.MessageType == WebSocketMessageType.Close)
+            {
+                frame = null;
+                return false;
+            }
 
-            if (isFirstChunk)
-            {
-                // first chunk, use buffer as reference, do not allocate anything
-                resultArraySize += currentChunkSize;
-                resultArrayWithTrailing = currentChunk;
-                isResultArrayCloned = false;
-            }
-            else if (currentChunk == null)
-            {
-                // weird chunk, do nothing
-            }
+            var slice = buffer.Slice(0, result.Count);
+
+            if (startChunk == null)
+                startChunk = currentChunk = new Chunk<byte>(slice);
             else
+                currentChunk = currentChunk.Add(slice);
+            
+            if(result.EndOfMessage && startChunk != null)
             {
-                // received more chunks, merge them via memory stream
-                if (ms == null)
+                if (startChunk.Next == null)
+                    frame = startChunk.Memory.ToArray();
+                else
                 {
-                    // create memory stream and insert first chunk
-                    ms = new MemoryStream();
-                    ms.Write(resultArrayWithTrailing, 0, resultArraySize);
+                    var sequence = new ReadOnlySequence<byte>(startChunk, 0, currentChunk, currentChunk.Memory.Length);
+                    frame = sequence.ToArray();
                 }
-
-                ms.Write(currentChunk, buffer.Offset, currentChunkSize); // insert current chunk
-            }
-
-            if (result.EndOfMessage)
-            {
-                frame = result.MessageType == WebSocketMessageType.Close ? null : GetFrame();
+                startChunk = null; // reset so we can accept new chunks from scratch
                 return true;
             }
-            
-            if (isResultArrayCloned == false)
-            {
-                // we got more chunks incoming, need to clone first chunk
-                resultArrayWithTrailing = resultArrayWithTrailing?.ToArray();
-                isResultArrayCloned = true;
-            }
-
-            frame = null;
-            return false;
-        }
-
-        byte[] GetFrame()
-        {
-            if (ms != null)
-            {
-                ms.Seek(0, SeekOrigin.Begin);
-                return ms.ToArray();
-            }
             else
             {
-                Array.Resize(ref resultArrayWithTrailing, resultArraySize);
-                return resultArrayWithTrailing;
+                frame = null;
+                return false;
             }
-        }
+        }    
     }
 }
