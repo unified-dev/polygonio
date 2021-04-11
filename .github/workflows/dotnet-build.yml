@@ -1,0 +1,94 @@
+name: .NET Automated CI Build
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  NUGET_TOKEN: ${{ secrets.NUGET_API_KEY }}
+  NUGET_URL: https://api.nuget.org/v3/index.json
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  GITHUB_URL: https://nuget.pkg.github.com/${{ github.REPOSITORY_OWNER }}/index.json
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout source codes
+      uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
+        
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v1
+      with:
+        dotnet-version: 5.0.x
+        source-url: ${{ env.GITHUB_URL }}
+      env:
+        NUGET_AUTH_TOKEN: ${{ env.GITHUB_TOKEN }}
+        
+    - name: Run MinVer
+      id: version
+      uses: thefringeninja/action-minver@2.0.0-preview1
+      with:
+        auto-increment: patch     #Valid values are major, minor, or patch (default)
+        default-pre-release-phase: alpha
+        
+    - name: Create packages
+      run: dotnet pack --configuration Release -p:PackageVersion=${{ steps.version.outputs.version }} --output ${{ env.DOTNET_ROOT }}/nupkgs
+      working-directory: src
+
+    - name: Upload a Build Artifact
+      uses: actions/upload-artifact@v2.2.3
+      with:
+        name: nupkgs
+        path: ${{env.DOTNET_ROOT}}/nupkgs
+        retention-days: 1
+
+  nuget-push:
+    needs: setup
+    runs-on: ubuntu-latest
+    steps:
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v1
+      with:
+        dotnet-version: 5.0.x
+        source-url: ${{ env.NUGET_URL }}
+      env:
+        NUGET_AUTH_TOKEN: ${{ env.NUGET_TOKEN }}
+        
+    - name: Download a Build Artifact
+      uses: actions/download-artifact@v2.0.9
+      with:
+        name: nupkgs
+        path: ${{env.DOTNET_ROOT}}/nupkgs
+
+    - name: Push packages
+      run: dotnet nuget push '*.nupkg' --api-key ${{ env.NUGET_TOKEN }} --source ${{ env.NUGET_URL }}
+      working-directory: ${{ env.DOTNET_ROOT }}/nupkgs
+
+  github-push:
+    needs: setup
+    runs-on: ubuntu-latest
+    steps:
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v1
+      with:
+        dotnet-version: 5.0.x
+        source-url: ${{ env.GITHUB_URL }}
+      env:
+        NUGET_AUTH_TOKEN: ${{ env.GITHUB_TOKEN }}
+        
+    - name: Download a Build Artifact
+      uses: actions/download-artifact@v2.0.9
+      with:
+        name: nupkgs
+        path: ${{env.DOTNET_ROOT}}/nupkgs
+
+    - name: Push packages
+      run: dotnet nuget push '*.nupkg' --api-key ${{ env.GITHUB_TOKEN }} --source ${{ env.GITHUB_URL }}
+      working-directory: ${{ env.DOTNET_ROOT }}/nupkgs
+
+
