@@ -24,7 +24,7 @@ namespace PolygonIo.WebSocket.Tests
                                                 new EventFactory<Quote, Trade, TimeAggregate, Status>());
 
             var str = "[{ \"ev\":\"status\",\"status\":\"connected\",\"message\":\"Connected Successfully\"}]";
-            var data = utf8JsonDeserializer.Deserialize(Encoding.UTF8.GetBytes(str));
+            var data = utf8JsonDeserializer.Deserialize(new ReadOnlySequence<byte>(Encoding.UTF8.GetBytes(str)));
 
             Assert.AreEqual(data.Status.ToArray().Length, 1);
         }

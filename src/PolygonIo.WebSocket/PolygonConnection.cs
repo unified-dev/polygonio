@@ -73,7 +73,7 @@ namespace PolygonIo.WebSocket
                 }
                 catch (WebSocketException ex)
                 {
-                    this.logger.LogError(ex.Message, ex);
+                    this.logger.LogError(ex, ex.Message);
                 }
                 catch (Exception ex)
                 {
