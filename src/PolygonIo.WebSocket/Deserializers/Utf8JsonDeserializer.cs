@@ -1,6 +1,7 @@
 ﻿using Microsoft.Extensions.Logging;
 using PolygonIo.WebSocket.Contracts;
 using PolygonIo.WebSocket.Factory;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Text.Json;
 
@@ -18,7 +19,7 @@ namespace PolygonIo.WebSocket.Deserializers
             this.logger = logger;
         }
 
-        public DeserializedData Deserialize(byte[] jsonData)
+        public DeserializedData Deserialize(ReadOnlySequence<byte> jsonData)
         {
             var perSecondAggregates = new List<ITimeAggregate>();
             var perMinuteAggregates = new List<ITimeAggregate>();

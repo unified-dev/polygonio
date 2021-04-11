@@ -1,12 +1,11 @@
 ﻿using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using PolygonIo.WebSocket;
-using PolygonIo.WebSocket.Deserializers;
 using Serilog;
 using System;
+using System.Buffers;
 using System.IO;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks.Dataflow;
 
 namespace PolygonIo.Utils.StreamRecorder
@@ -41,12 +40,13 @@ namespace PolygonIo.Utils.StreamRecorder
             using var binaryWriter = new BinaryWriter(File.OpenWrite(filename));
 
             var lastUpdate = DateTime.UtcNow;
-            var count = 0;
+            long count = 0;
 
-            var blockWriter = new ActionBlock<byte[]>((data) =>
+            var writerActionBlock = new ActionBlock<ReadOnlySequence<byte>>((data) =>
             {
-                count = +data.Length;
-                binaryWriter.Write(data);
+                count =+ data.Length;
+                binaryWriter.Write(data.ToArray());
+                binaryWriter.Write("\n"); // delimit frames with new line
 
                 var span = (DateTime.UtcNow - lastUpdate);
 
@@ -57,7 +57,7 @@ namespace PolygonIo.Utils.StreamRecorder
                 }
             });
 
-            using var polygonConnection = new PolygonConnection(apiKey, "wss://socket.polygon.io/stocks", blockWriter, TimeSpan.FromSeconds(15), loggerFactory);
+            using var polygonConnection = new PolygonConnection(apiKey, "wss://socket.polygon.io/stocks", writerActionBlock, TimeSpan.FromSeconds(15), loggerFactory);
 
             polygonConnection.Start(args.Select(x => x.ToUpper()));
 
@@ -65,8 +65,8 @@ namespace PolygonIo.Utils.StreamRecorder
             Console.ReadKey();
 
             polygonConnection.Stop();
-            blockWriter.Complete();
-            blockWriter.Completion.Wait();
+            writerActionBlock.Complete();
+            writerActionBlock.Completion.Wait();
             binaryWriter.Flush();
             binaryWriter.Close();
         }

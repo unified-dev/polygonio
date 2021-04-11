@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks.Dataflow;
 using System.Linq;
 using System.Net.WebSockets;
+using System.Buffers;
 
 namespace PolygonIo.WebSocket
 {
@@ -14,7 +15,7 @@ namespace PolygonIo.WebSocket
         const int ReceiveChunkSize = 2048;
         
         private readonly ILogger<PolygonConnection> logger;
-        private readonly ITargetBlock<byte[]> targetBlock;
+        private readonly ITargetBlock<ReadOnlySequence<byte>> targetBlock;
         private readonly TimeSpan keepAliveInterval;        
         private readonly Uri uri;
         private readonly string apiKey;
@@ -22,7 +23,7 @@ namespace PolygonIo.WebSocket
         private Task loopTask;
         private CancellationTokenSource cts = null;
 
-        public PolygonConnection(string apiKey, string apiUrl, ITargetBlock<byte[]> targetBlock, TimeSpan keepAliveInterval, ILoggerFactory loggerFactory)
+        public PolygonConnection(string apiKey, string apiUrl, ITargetBlock<ReadOnlySequence<byte>> targetBlock, TimeSpan keepAliveInterval, ILoggerFactory loggerFactory)
         {
             this.uri = string.IsNullOrEmpty(apiUrl) ? throw new ArgumentException($"'{nameof(apiUrl)}' cannot be null or empty.", nameof(apiUrl)) : new Uri(apiUrl);
             this.apiKey = apiKey ?? throw new ArgumentNullException(nameof(apiKey));
@@ -63,16 +64,21 @@ namespace PolygonIo.WebSocket
 
                         if (isEndOfMessage)
                         {
-                            if (frame == null)
+                            if (frame.IsEmpty == true)
                                 break; // end of mesage with no data means socket closed - break so we can reconnect
-
-                            await this.targetBlock.SendAsync(frame);
+                            else
+                                await this.targetBlock.SendAsync(frame);
                         }
                     }
                 }
                 catch (WebSocketException ex)
                 {
                     this.logger.LogError(ex.Message, ex);
+                }
+                catch (Exception ex)
+                {
+                    this.logger.LogCritical(ex.Message, ex);
+                    return;
                 }
                 finally
                 {

@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using PolygonIo.WebSocket.Deserializers;
 using System.Threading.Tasks.Dataflow;
 using PolygonIo.WebSocket.Factory;
+using System.Buffers;
 
 namespace PolygonIo.WebSocket
 {
@@ -15,7 +16,7 @@ namespace PolygonIo.WebSocket
         private readonly IPolygonDeserializer deserializer;
         private int isRunning;
         private IDisposable link;
-        private readonly TransformBlock<byte[], DeserializedData> decodeBlock;
+        private readonly TransformBlock<ReadOnlySequence<byte>, DeserializedData> decodeBlock;
         private readonly PolygonConnection polygonConnection;
 
         public PolygonWebsocket(string apiKey, string apiUrl, int reconnectTimeout, ILoggerFactory loggerFactory)
@@ -28,7 +29,7 @@ namespace PolygonIo.WebSocket
             this.logger = loggerFactory.CreateLogger<PolygonWebsocket>();
             this.deserializer = new Utf8JsonDeserializer(loggerFactory.CreateLogger<Utf8JsonDeserializer>(), eventFactory);
 
-            this.decodeBlock = new TransformBlock<byte[], DeserializedData>((data) =>
+            this.decodeBlock = new TransformBlock<ReadOnlySequence<byte>, DeserializedData>((data) =>
             {
                 try
                 {
@@ -36,7 +37,7 @@ namespace PolygonIo.WebSocket
                 }
                 catch (Exception e)
                 {
-                    this.logger.LogError($"Error deserializing '{Encoding.UTF8.GetString(data)}' ({e}).");
+                    this.logger.LogError($"Error deserializing '{Encoding.UTF8.GetString(data.ToArray())}' ({e}).");
                     return null;
                 }
             });
