@@ -65,7 +65,7 @@ namespace PolygonIo.WebSocket
                         if (isEndOfMessage)
                         {
                             if (frame.IsEmpty == true)
-                                break; // end of mesage with no data means socket closed - break so we can reconnect
+                                break; // End of mesage with no data means socket closed - break so we can reconnect.
                             else
                                 await this.targetBlock.SendAsync(frame);
                         }

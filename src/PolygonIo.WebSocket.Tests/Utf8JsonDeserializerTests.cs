@@ -8,7 +8,6 @@ using System.Text;
 
 namespace PolygonIo.WebSocket.Tests
 {
-
     public class Tests
     {
         [SetUp]

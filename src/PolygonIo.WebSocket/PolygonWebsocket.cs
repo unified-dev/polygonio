@@ -66,7 +66,7 @@ namespace PolygonIo.WebSocket
             }
 
             this.polygonConnection.Stop();
-            this.link?.Dispose(); // unlink
+            this.link?.Dispose(); // Unlink.
         }
 
         public void Dispose()
