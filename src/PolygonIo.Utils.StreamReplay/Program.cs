@@ -6,6 +6,7 @@ using System;
 using System.Buffers;
 using System.IO;
 using System.IO.Pipelines;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace PolygonIo.Utils.StreamReplay
@@ -20,8 +21,11 @@ namespace PolygonIo.Utils.StreamReplay
 
             var deserializer = new Utf8JsonDeserializer(loggerFactory.CreateLogger<Utf8JsonDeserializer>(), new PolygonTypesEventFactory());
 
-            using var stream = File.Open(/*args[0]*/ "polygonio_dump_20210409T213817.dmp", FileMode.Open);
+            using var stream = File.Open(args[0], FileMode.Open);
             var reader = PipeReader.Create(stream);
+
+            long count = 0;
+            long errors = 0;
 
             while (true)
             {
@@ -30,10 +34,24 @@ namespace PolygonIo.Utils.StreamReplay
 
                 while (TryReadLine(ref buffer, out ReadOnlySequence<byte> line))
                 {
-                    var str = System.Text.Encoding.UTF8.GetString(line.ToArray());                                        
-                    Console.WriteLine(str);
+                    var str = System.Text.Encoding.UTF8.GetString(line.ToArray());
 
-                    // var obj = deserializer.Deserialize(line);
+                    try
+                    {
+
+                        var obj = deserializer.Deserialize(line);
+
+                        count = count + obj.Quotes.Count();
+                        count = count + obj.Trades.Count();
+                        count = count + obj.Status.Count();
+                        count = count + obj.PerSecondAggregates.Count();
+                        count = count + obj.PerMinuteAggregates.Count();
+                    }
+                    catch(Exception ex)
+                    {
+                        errors++;
+                        logger.LogError(ex, ex.Message);
+                    }
                 }
 
                 // Tell the PipeReader how much of the buffer has been consumed.
@@ -47,7 +65,9 @@ namespace PolygonIo.Utils.StreamReplay
             }
 
             // Mark the PipeReader as complete.
-            await reader.CompleteAsync();     
+            await reader.CompleteAsync();
+
+            logger.LogInformation($"Replayed {count:n0} objects with {errors:n0} errors.");
         }
 
         private static bool TryReadLine(ref ReadOnlySequence<byte> buffer, out ReadOnlySequence<byte> line)

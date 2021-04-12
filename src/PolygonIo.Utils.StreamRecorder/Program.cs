@@ -44,16 +44,17 @@ namespace PolygonIo.Utils.StreamRecorder
 
             var writerActionBlock = new ActionBlock<ReadOnlySequence<byte>>((data) =>
             {
-                count =+ data.Length;
+                count = count + data.Length;
                 binaryWriter.Write(data.ToArray());
-                binaryWriter.Write("\n"); // delimit frames with new line
+                binaryWriter.Write((byte)'\n'); // delimit frames with new line
 
                 var span = (DateTime.UtcNow - lastUpdate);
 
                 if (span.TotalSeconds > 10)
                 {
-                    Console.WriteLine($"Written {count:n0} bytes in {span.TotalSeconds} seconds.");
+                    logger.LogInformation($"Written {count:n0} bytes in {span.TotalSeconds} seconds.");
                     lastUpdate = DateTime.UtcNow;
+                    count = 0;
                 }
             });
 
