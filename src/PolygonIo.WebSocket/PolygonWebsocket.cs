@@ -35,9 +35,9 @@ namespace PolygonIo.WebSocket
                 {
                     return this.deserializer.Deserialize(data);
                 }
-                catch (Exception e)
+                catch (Exception ex)
                 {
-                    this.logger.LogError(e, $"Error deserializing '{Encoding.UTF8.GetString(data.ToArray())}' ({e}).");
+                    this.logger.LogError(ex, $"Error deserializing '{Encoding.UTF8.GetString(data.ToArray())}' ({ex}).");
                     return null;
                 }
             });
