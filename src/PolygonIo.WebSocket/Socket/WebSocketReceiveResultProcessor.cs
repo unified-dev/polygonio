@@ -18,7 +18,9 @@ namespace PolygonIo.WebSocket
                 return false;
             }
 
-            var slice = buffer.Slice(0, result.Count).ToArray(); // Take a local copy to avoid corruption as buffer is reused by caller.
+            var slice = buffer
+                            .Slice(0, result.Count)
+                            .ToArray(); // Take a local copy to avoid corruption as buffer is reused by caller.
 
             if (startChunk == null)
                 startChunk = currentChunk = new Chunk<byte>(slice);
@@ -32,7 +34,7 @@ namespace PolygonIo.WebSocket
                 else
                     frame = new ReadOnlySequence<byte>(startChunk, 0, currentChunk, currentChunk.Memory.Length);
 
-                startChunk = null; // Reset so we can accept new chunks from scratch.
+                startChunk = currentChunk = null; // Reset so we can accept new chunks from scratch.
                 return true;
             }
             else
