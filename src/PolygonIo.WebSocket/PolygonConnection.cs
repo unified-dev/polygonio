@@ -104,7 +104,7 @@ namespace PolygonIo.WebSocket
             this.loopTask = null;
         }
 
-        private async Task StopAsync()
+        public async Task StopAsync()
         {
             cts?.Cancel();
 
