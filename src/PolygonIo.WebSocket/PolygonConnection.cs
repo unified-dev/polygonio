@@ -3,7 +3,6 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Collections.Generic;
-using System.Threading.Tasks.Dataflow;
 using System.Linq;
 using System.Net.WebSockets;
 using System.Buffers;
@@ -13,35 +12,47 @@ namespace PolygonIo.WebSocket
     public class PolygonConnection : IDisposable
     {
         const int ReceiveChunkSize = 2048;
-        
+        private byte[] internalBufferIfArrayPoolNotUsed;
         private readonly ILogger<PolygonConnection> logger;
-        private readonly ITargetBlock<ReadOnlySequence<byte>> targetBlock;
-        private readonly TimeSpan keepAliveInterval;        
+        private readonly TimeSpan keepAliveInterval;
+        private readonly bool isUsingArrayPool;
         private readonly Uri uri;
         private readonly string apiKey;
 
         private Task loopTask;
         private CancellationTokenSource cts = null;
 
-        public PolygonConnection(string apiKey, string apiUrl, ITargetBlock<ReadOnlySequence<byte>> targetBlock, TimeSpan keepAliveInterval, ILoggerFactory loggerFactory)
+        public PolygonConnection(string apiKey, string apiUrl, TimeSpan keepAliveInterval, ILoggerFactory loggerFactory, bool isUsingArrayPool = false)
         {
             this.uri = string.IsNullOrEmpty(apiUrl) ? throw new ArgumentException($"'{nameof(apiUrl)}' cannot be null or empty.", nameof(apiUrl)) : new Uri(apiUrl);
             this.apiKey = apiKey ?? throw new ArgumentNullException(nameof(apiKey));
-            this.targetBlock = targetBlock ?? throw new ArgumentNullException(nameof(targetBlock));
-            this.keepAliveInterval = keepAliveInterval;            
+            this.keepAliveInterval = keepAliveInterval;
+            this.isUsingArrayPool = isUsingArrayPool;
             this.logger = loggerFactory.CreateLogger<PolygonConnection>();
         }
 
-        async Task Loop(IEnumerable<string> tickers, CancellationToken cancellationToken)
+        byte[] GetBuffer()
         {
+            if (this.isUsingArrayPool)
+                return ArrayPool<byte>.Shared.Rent(ReceiveChunkSize); // Rent a buffer.
+            else
+            {
+                if(this.internalBufferIfArrayPoolNotUsed == null)
+                    this.internalBufferIfArrayPoolNotUsed = new byte[ReceiveChunkSize];
+
+                return this.internalBufferIfArrayPoolNotUsed;
+            }
+        }
+
+        async Task Loop(IEnumerable<string> tickers, Func<ReadOnlySequence<byte>,Task> dispatch, CancellationToken cancellationToken)
+        {           
             this.logger.LogInformation($"Entering {nameof(PolygonConnection.Loop)}.");
 
             while (cancellationToken.IsCancellationRequested == false)
             {
                 var webSocket = new ClientWebSocket();
                 webSocket.Options.KeepAliveInterval = this.keepAliveInterval;
-                var buffer = new ArraySegment<byte>(new byte[ReceiveChunkSize]);
-                var resultProcessor = new WebSocketReceiveResultProcessor();
+                var resultProcessor = new WebSocketReceiveResultProcessor(this.isUsingArrayPool);
 
                 try
                 {
@@ -59,6 +70,7 @@ namespace PolygonIo.WebSocket
 
                     while (webSocket.State == WebSocketState.Open && cancellationToken.IsCancellationRequested == false)
                     {
+                        var buffer = GetBuffer();
                         var result = await webSocket.ReceiveAsync(buffer, cancellationToken);
                         var isEndOfMessage = resultProcessor.Receive(result, buffer, out var frame);
 
@@ -67,7 +79,7 @@ namespace PolygonIo.WebSocket
                             if (frame.IsEmpty == true)
                                 break; // End of mesage with no data means socket closed - break so we can reconnect.
                             else
-                                await this.targetBlock.SendAsync(frame);
+                                await dispatch(frame);
                         }
                     }
                 }
@@ -83,14 +95,18 @@ namespace PolygonIo.WebSocket
                 finally
                 {
                     webSocket.Dispose();
+                    resultProcessor.Dispose();
                 }
             }
         }
 
-        public void Start(IEnumerable<string> tickers)
+        public void Start(IEnumerable<string> tickers, Func<ReadOnlySequence<byte>, Task> dispatch)
         {
+            if (dispatch is null)
+                throw new ArgumentNullException(nameof(dispatch));
+
             this.cts = new CancellationTokenSource();
-            this.loopTask = Task.Factory.StartNew(async () => await Loop(tickers, this.cts.Token));
+            this.loopTask = Task.Factory.StartNew(async () => await Loop(tickers, dispatch, this.cts.Token));
         }
 
         public void Stop()

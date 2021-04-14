@@ -7,6 +7,8 @@ using PolygonIo.WebSocket.Deserializers;
 using System.Threading.Tasks.Dataflow;
 using PolygonIo.WebSocket.Factory;
 using System.Buffers;
+using System.Runtime.InteropServices;
+using System.Threading.Tasks;
 
 namespace PolygonIo.WebSocket
 {
@@ -15,8 +17,8 @@ namespace PolygonIo.WebSocket
         private readonly ILogger<PolygonWebsocket> logger;
         private readonly IPolygonDeserializer deserializer;
         private int isRunning;
-        private IDisposable link;
-        private readonly TransformBlock<ReadOnlySequence<byte>, DeserializedData> decodeBlock;
+        private TransformBlock<ReadOnlySequence<byte>, DeserializedData> decodeBlock;
+        private ActionBlock<DeserializedData> dispatchBlock;
         private readonly PolygonConnection polygonConnection;
 
         public PolygonWebsocket(string apiKey, string apiUrl, int reconnectTimeout, ILoggerFactory loggerFactory)
@@ -28,24 +30,43 @@ namespace PolygonIo.WebSocket
         {
             this.logger = loggerFactory.CreateLogger<PolygonWebsocket>();
             this.deserializer = new Utf8JsonDeserializer(loggerFactory.CreateLogger<Utf8JsonDeserializer>(), eventFactory);
+            this.polygonConnection = new PolygonConnection(apiKey, apiUrl, TimeSpan.FromSeconds(reconnectTimeout), loggerFactory, true);            
+        }
 
-            this.decodeBlock = new TransformBlock<ReadOnlySequence<byte>, DeserializedData>((data) =>
+        TransformBlock<ReadOnlySequence<byte>, DeserializedData> NewDecodeBlock()
+        {
+            return new TransformBlock<ReadOnlySequence<byte>, DeserializedData>((data) =>
             {
                 try
                 {
-                    return this.deserializer.Deserialize(data);
+                    var deserializedData = this.deserializer.Deserialize(data);
+
+                    // We are using PolygonConnection with constructor parameter isUsingArrayPool = true, it has
+                    // allocated buffers for us from the shared pool - so here we must return buffers.
+                    foreach (var chunk in data)
+                    {
+                        if (MemoryMarshal.TryGetArray(chunk, out var segment))
+                            ArrayPool<byte>.Shared.Return(segment.Array);
+                    }
+
+                    // Return data.
+                    return deserializedData;
                 }
                 catch (Exception ex)
                 {
                     this.logger.LogError(ex, $"Error deserializing '{Encoding.UTF8.GetString(data.ToArray())}' ({ex}).");
                     return null;
                 }
-            });
-
-            this.polygonConnection = new PolygonConnection(apiKey, apiUrl, decodeBlock, TimeSpan.FromSeconds(reconnectTimeout), loggerFactory);            
+            }, new ExecutionDataflowBlockOptions { MaxDegreeOfParallelism = Environment.ProcessorCount, BoundedCapacity = Environment.ProcessorCount*2 });
         }
 
-        public void Start(IEnumerable<string> tickers, ITargetBlock<DeserializedData> targetBlock)
+        ActionBlock<DeserializedData> NewDispatchBlock(Func<DeserializedData, Task> target)
+        {
+            return new ActionBlock<DeserializedData>(async (deserializedData) => await target(deserializedData),
+            new ExecutionDataflowBlockOptions { MaxDegreeOfParallelism = 1, BoundedCapacity = 1 });
+        }
+
+        public void Start(IEnumerable<string> tickers, Func<DeserializedData,Task> target)
         {
             if (Interlocked.CompareExchange(ref this.isRunning, 1, 0) == 1)
             {
@@ -53,8 +74,10 @@ namespace PolygonIo.WebSocket
                 return;
             }
 
-            this.link = decodeBlock.LinkTo(targetBlock);
-            this.polygonConnection.Start(tickers);
+            this.decodeBlock = NewDecodeBlock();
+            this.dispatchBlock = NewDispatchBlock(target);
+            this.decodeBlock.LinkTo(this.dispatchBlock, new DataflowLinkOptions { PropagateCompletion = true });
+            this.polygonConnection.Start(tickers, async (data) => await this.decodeBlock.SendAsync(data));
         }
 
         public void Stop()
@@ -64,9 +87,10 @@ namespace PolygonIo.WebSocket
                 this.logger.LogDebug($"{nameof(PolygonWebsocket)} is not running.");
                 return;
             }
-
-            this.polygonConnection.Stop();
-            this.link?.Dispose(); // Unlink.
+            
+            this.polygonConnection.Stop();            
+            this.decodeBlock.Complete();
+            this.decodeBlock.Completion.Wait();
         }
 
         public void Dispose()

@@ -6,12 +6,13 @@ using System;
 using System.Buffers;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 
 namespace PolygonIo.Utils.StreamRecorder
 {
     class Program
-    {
+    {    
         static void Main(string[] args)
         {
             if (args.Length == 0)
@@ -38,11 +39,13 @@ namespace PolygonIo.Utils.StreamRecorder
             var filename = $"polygonio_dump_{DateTime.Now.ToString("yyyyMMddTHHmmss")}.dmp";
 
             using var binaryWriter = new BinaryWriter(File.OpenWrite(filename));
-
-            var lastUpdate = DateTime.UtcNow;
+            
             long count = 0;
+            var lastUpdate = DateTime.UtcNow;
 
-            var writerActionBlock = new ActionBlock<ReadOnlySequence<byte>>((data) =>
+            using var polygonConnection = new PolygonConnection(apiKey, "wss://socket.polygon.io/stocks", TimeSpan.FromSeconds(15), loggerFactory);
+
+            polygonConnection.Start(args.Select(x => x.ToUpper()), (data) =>
             {
                 count = count + data.Length;
                 binaryWriter.Write(data.ToArray());
@@ -56,18 +59,13 @@ namespace PolygonIo.Utils.StreamRecorder
                     lastUpdate = DateTime.UtcNow;
                     count = 0;
                 }
+                return Task.CompletedTask;
             });
-
-            using var polygonConnection = new PolygonConnection(apiKey, "wss://socket.polygon.io/stocks", writerActionBlock, TimeSpan.FromSeconds(15), loggerFactory);
-
-            polygonConnection.Start(args.Select(x => x.ToUpper()));
 
             Console.WriteLine($"Now recording to {filename}, press any key to stop...");
             Console.ReadKey();
 
             polygonConnection.Stop();
-            writerActionBlock.Complete();
-            writerActionBlock.Completion.Wait();
             binaryWriter.Flush();
             binaryWriter.Close();
         }

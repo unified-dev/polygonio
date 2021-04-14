@@ -62,9 +62,7 @@ namespace PolygonIo.Utils.StreamReplay
 
                 // Stop reading if there's no more data.
                 if (result.IsCompleted)
-                {
                     break;
-                }
             }
 
             sw.Stop();

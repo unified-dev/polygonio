@@ -1,11 +1,10 @@
 ﻿using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
-using PolygonIo.WebSocket.Deserializers;
 using Serilog;
 using System;
 using System.Threading;
-using System.Threading.Tasks.Dataflow;
+using System.Threading.Tasks;
 
 namespace PolygonIo.WebSocket.Example
 {
@@ -38,10 +37,11 @@ namespace PolygonIo.WebSocket.Example
 
             polygonWebSocket.Start(
                                 tickers,
-                                new ActionBlock<DeserializedData>((data) =>
+                                (data) =>
                                 {
                                     logger.LogInformation(JsonConvert.SerializeObject(data, Formatting.Indented));
-                                }));
+                                    return Task.CompletedTask;
+                                });
 
             Console.ReadKey();
 
