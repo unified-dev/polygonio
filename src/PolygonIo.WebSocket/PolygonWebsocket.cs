@@ -93,6 +93,19 @@ namespace PolygonIo.WebSocket
             this.decodeBlock.Completion.Wait();
         }
 
+        public async Task StopAsync()
+        {
+            if (Interlocked.CompareExchange(ref this.isRunning, 0, 1) == 0)
+            {
+                this.logger.LogDebug($"{nameof(PolygonWebsocket)} is not running.");
+                return;
+            }
+
+            await this.polygonConnection.StopAsync();
+            this.decodeBlock.Complete();
+            await this.decodeBlock.Completion;
+        }
+
         public void Dispose()
         {
             // Dispose of unmanaged resources.

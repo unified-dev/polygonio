@@ -31,7 +31,7 @@ namespace PolygonIo.WebSocket
             this.logger = loggerFactory.CreateLogger<PolygonConnection>();
         }
 
-        byte[] GetBuffer()
+        ArraySegment<byte> GetBuffer()
         {
             if (this.isUsingArrayPool)
                 return ArrayPool<byte>.Shared.Rent(ReceiveChunkSize); // Rent a buffer.
@@ -77,7 +77,7 @@ namespace PolygonIo.WebSocket
                         if (isEndOfMessage)
                         {
                             if (frame.IsEmpty == true)
-                                break; // End of mesage with no data means socket closed - break so we can reconnect.
+                                break; // End of message with no data means socket closed - break so we can reconnect.
                             else
                                 await dispatch(frame);
                         }
