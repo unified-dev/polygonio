@@ -1,10 +1,11 @@
 using Microsoft.Extensions.Logging.Abstractions;
 using NUnit.Framework;
+using PolygonIo.WebSocket.Contracts;
 using PolygonIo.WebSocket.Deserializers;
 using PolygonIo.WebSocket.Factory;
 using System.Buffers;
-using System.Linq;
 using System.Text;
+using System.Threading.Tasks;
 
 namespace PolygonIo.WebSocket.Tests
 {
@@ -23,9 +24,18 @@ namespace PolygonIo.WebSocket.Tests
                                                 new EventFactory<Quote, Trade, TimeAggregate, Status>());
 
             var str = "[{ \"ev\":\"status\",\"status\":\"connected\",\"message\":\"Connected Successfully\"}]";
-            var data = utf8JsonDeserializer.Deserialize(new ReadOnlySequence<byte>(Encoding.UTF8.GetBytes(str)));
 
-            Assert.AreEqual(data.Status.ToArray().Length, 1);
+            IStatus s = null;
+            utf8JsonDeserializer.Deserialize(
+                                    new ReadOnlySequence<byte>(Encoding.UTF8.GetBytes(str)),
+                                    (quote) => { },
+                                    (trade) => { },
+                                    (aggregate) => { },
+                                    (aggregate) => { },
+                                    (status) => { s = status; });
+
+
+            Assert.IsNotEmpty(s.Message);
         }
     }
 }

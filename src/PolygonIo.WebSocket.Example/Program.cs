@@ -10,11 +10,13 @@ namespace PolygonIo.WebSocket.Example
 {
     class Program
     {
+        static ILogger<Program> logger;
+        
         static void Main(string[] args)
         {
             using var log = new LoggerConfiguration().WriteTo.Console().CreateLogger();
             var loggerFactory = new LoggerFactory().AddSerilog(log);
-            var logger = loggerFactory.CreateLogger<Program>();
+            logger = loggerFactory.CreateLogger<Program>();
 
             var devEnvironmentVariable = Environment.GetEnvironmentVariable("NETCORE_ENVIRONMENT");
 
@@ -37,15 +39,20 @@ namespace PolygonIo.WebSocket.Example
 
             polygonWebSocket.Start(
                                 tickers,
-                                (data) =>
-                                {
-                                    logger.LogInformation(JsonConvert.SerializeObject(data, Formatting.Indented));
-                                    return Task.CompletedTask;
-                                });
+                                (trade) => PrintAndReturnTask(trade),
+                                (quote) => PrintAndReturnTask(quote),
+                                (aggregate) => PrintAndReturnTask(aggregate),
+                                (status) => PrintAndReturnTask(status));
 
             Console.ReadKey();
 
             polygonWebSocket.Stop();
+        }
+
+        static Task PrintAndReturnTask(object obj)
+        {
+            logger.LogInformation(JsonConvert.SerializeObject(obj, Formatting.Indented));
+            return Task.CompletedTask;
         }
     }
 }

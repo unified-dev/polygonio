@@ -2,12 +2,11 @@
 using PolygonIo.WebSocket.Contracts;
 using PolygonIo.WebSocket.Factory;
 using System.Buffers;
-using System.Collections.Generic;
+using System;
 using System.Text.Json;
 
 namespace PolygonIo.WebSocket.Deserializers
 {
-
     public class Utf8JsonDeserializer : IPolygonDeserializer
     {
         private readonly ILogger<Utf8JsonDeserializer> logger;
@@ -19,15 +18,9 @@ namespace PolygonIo.WebSocket.Deserializers
             this.logger = logger;
         }
 
-        public DeserializedData Deserialize(ReadOnlySequence<byte> jsonData)
+        public void Deserialize(ReadOnlySequence<byte> data, Action<IQuote> onQuote, Action<ITrade> onTrade, Action<ITimeAggregate> onPerSecondAggregate, Action<ITimeAggregate> onPerMinuteAggregate, Action<IStatus> onStatus)
         {
-            var perSecondAggregates = new List<ITimeAggregate>();
-            var perMinuteAggregates = new List<ITimeAggregate>();
-            var quotes = new List<IQuote>();
-            var trades = new List<ITrade>();
-            var status = new List<IStatus>();
-
-            var reader = new Utf8JsonReader(jsonData);
+            var reader = new Utf8JsonReader(data);
 
             if (reader.SkipUpTo(JsonTokenType.StartArray) == false)
                 throw new JsonException($"skipped all data and no array found");
@@ -39,22 +32,23 @@ namespace PolygonIo.WebSocket.Deserializers
                     reader.ExpectNamedProperty(StreamFieldNames.Event);
                     var ev = reader.ExpectString(StreamFieldNames.Event);
 
+                    // Order by most expected sequence.
                     switch (ev)
                     {
                         case StreamFieldNames.Quote:
-                            quotes.Add(reader.DecodeQuote(this.eventDataTypeFactory));
+                            onQuote(reader.DecodeQuote(this.eventDataTypeFactory));
                             break;
                         case StreamFieldNames.Trade:
-                            trades.Add(reader.DecodeTrade(this.eventDataTypeFactory));
+                            onTrade(reader.DecodeTrade(this.eventDataTypeFactory));
                             break;
                         case StreamFieldNames.AggregatePerSecond:
-                            perSecondAggregates.Add(reader.DecodeAggregate(this.eventDataTypeFactory));
+                            onPerSecondAggregate(reader.DecodeAggregate(this.eventDataTypeFactory));
                             break;
                         case StreamFieldNames.AggregatePerMinute:
-                            perMinuteAggregates.Add(reader.DecodeAggregate(this.eventDataTypeFactory));
+                            onPerMinuteAggregate(reader.DecodeAggregate(this.eventDataTypeFactory));
                             break;
                         case StreamFieldNames.Status:
-                            status.Add(reader.DecodeStatus(this.eventDataTypeFactory));
+                            onStatus(reader.DecodeStatus(this.eventDataTypeFactory));
                             break;
                     }
                 }
@@ -63,8 +57,6 @@ namespace PolygonIo.WebSocket.Deserializers
                     this.logger.LogError(e, $"decoding stream but will skip past error, encountered {e}");
                 }
             }
-
-            return new DeserializedData(trades, quotes, status, perSecondAggregates, perMinuteAggregates);
-        } 
+        }
     }
 }

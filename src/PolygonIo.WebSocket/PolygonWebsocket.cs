@@ -9,6 +9,8 @@ using PolygonIo.WebSocket.Factory;
 using System.Buffers;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
+using PolygonIo.WebSocket.Contracts;
+using System.Linq;
 
 namespace PolygonIo.WebSocket
 {
@@ -17,8 +19,8 @@ namespace PolygonIo.WebSocket
         private readonly ILogger<PolygonWebsocket> logger;
         private readonly IPolygonDeserializer deserializer;
         private int isRunning;
-        private TransformBlock<ReadOnlySequence<byte>, DeserializedData> decodeBlock;
-        private ActionBlock<DeserializedData> dispatchBlock;
+        private TransformBlock<ReadOnlySequence<byte>, IEnumerable<object>> decodeBlock;
+        private ActionBlock<IEnumerable<object>> dispatchBlock;
         private readonly PolygonConnection polygonConnection;
 
         public PolygonWebsocket(string apiKey, string apiUrl, int reconnectTimeout, ILoggerFactory loggerFactory)
@@ -33,13 +35,27 @@ namespace PolygonIo.WebSocket
             this.polygonConnection = new PolygonConnection(apiKey, apiUrl, TimeSpan.FromSeconds(reconnectTimeout), loggerFactory, true);            
         }
 
-        TransformBlock<ReadOnlySequence<byte>, DeserializedData> NewDecodeBlock()
+        TransformBlock<ReadOnlySequence<byte>, IEnumerable<object>> NewDecodeBlock()
         {
-            return new TransformBlock<ReadOnlySequence<byte>, DeserializedData>((data) =>
+            return new TransformBlock<ReadOnlySequence<byte>, IEnumerable<object>>((data) =>
             {
+                var list = new List<object>();
+
                 try
                 {
-                    var deserializedData = this.deserializer.Deserialize(data);
+                    try
+                    {
+                        deserializer.Deserialize(data,
+                                    (quote) => list.Add(quote),
+                                    (trade) => list.Add(trade),
+                                    (aggregate) => list.Add(aggregate),
+                                    (aggregate) => list.Add(aggregate),
+                                    (status) => list.Add(status));
+                    }
+                    catch(Exception ex)
+                    {
+                        logger.LogError(ex, ex.Message);
+                    }
 
                     // We are using PolygonConnection with constructor parameter isUsingArrayPool = true, it has
                     // allocated buffers for us from the shared pool - so here we must return buffers.
@@ -50,7 +66,7 @@ namespace PolygonIo.WebSocket
                     }
 
                     // Return data.
-                    return deserializedData;
+                    return list.AsEnumerable();
                 }
                 catch (Exception ex)
                 {
@@ -60,13 +76,26 @@ namespace PolygonIo.WebSocket
             }, new ExecutionDataflowBlockOptions { MaxDegreeOfParallelism = Environment.ProcessorCount, BoundedCapacity = Environment.ProcessorCount*2 });
         }
 
-        ActionBlock<DeserializedData> NewDispatchBlock(Func<DeserializedData, Task> target)
+        ActionBlock<IEnumerable<object>> NewDispatchBlock(Func<ITrade, Task> onTrade, Func<IQuote, Task> onQuote, Func<ITimeAggregate, Task> onAggregate, Func<IStatus, Task> onStatus)
         {
-            return new ActionBlock<DeserializedData>(async (deserializedData) => await target(deserializedData),
+            return new ActionBlock<IEnumerable<object>>(async (items) =>
+            {
+                foreach (var item in items)
+                {
+                    if (item is IQuote quote)
+                        await onQuote(quote);
+                    else if (item is ITrade trade)
+                        await onTrade(trade);
+                    else if (item is ITimeAggregate aggregate)
+                        await onAggregate(aggregate);
+                    else if (item is IStatus status)
+                        await onStatus(status);
+                }
+            },
             new ExecutionDataflowBlockOptions { MaxDegreeOfParallelism = 1, BoundedCapacity = 1 });
         }
 
-        public void Start(IEnumerable<string> tickers, Func<DeserializedData,Task> target)
+        public void Start(IEnumerable<string> tickers, Func<ITrade, Task> onTrade, Func<IQuote, Task> onQuote, Func<ITimeAggregate, Task> onAggregate, Func<IStatus, Task> onStatus)
         {
             if (Interlocked.CompareExchange(ref this.isRunning, 1, 0) == 1)
             {
@@ -75,7 +104,7 @@ namespace PolygonIo.WebSocket
             }
 
             this.decodeBlock = NewDecodeBlock();
-            this.dispatchBlock = NewDispatchBlock(target);
+            this.dispatchBlock = NewDispatchBlock(onTrade, onQuote, onAggregate, onStatus);
             this.decodeBlock.LinkTo(this.dispatchBlock, new DataflowLinkOptions { PropagateCompletion = true });
             this.polygonConnection.Start(tickers, async (data) => await this.decodeBlock.SendAsync(data));
         }

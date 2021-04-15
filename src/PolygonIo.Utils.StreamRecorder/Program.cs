@@ -7,7 +7,6 @@ using System.Buffers;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-using System.Threading.Tasks.Dataflow;
 
 namespace PolygonIo.Utils.StreamRecorder
 {
