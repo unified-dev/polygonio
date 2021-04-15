@@ -2,7 +2,7 @@
 
 namespace PolygonIo.WebSocket.Contracts
 {
-    public interface ITimeAggregate : ISymbol
+    public interface ITimeAggregate
     {
         decimal Close { get; set; }
         DateTimeOffset EndDateTime { get; set; }
@@ -11,5 +11,6 @@ namespace PolygonIo.WebSocket.Contracts
         decimal Open { get; set; }
         DateTimeOffset StartDateTime { get; set; }
         decimal Volume { get; set; }
+        string Symbol { get; set; }
     }
 }

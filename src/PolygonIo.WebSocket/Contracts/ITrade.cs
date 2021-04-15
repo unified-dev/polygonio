@@ -2,7 +2,7 @@
 
 namespace PolygonIo.WebSocket.Contracts
 {
-    public interface ITrade : ISymbol
+    public interface ITrade
     {
         int ExchangeId { get; set; }
         decimal Price { get; set; }
@@ -11,5 +11,6 @@ namespace PolygonIo.WebSocket.Contracts
         TradeCondition[] TradeConditions { get; set; }
         string TradeId { get; set; }
         decimal TradeSize { get; set; }
+        string Symbol { get; set; }
     }
 }
