@@ -14,5 +14,6 @@ namespace PolygonIo.WebSocket.Tests
         public QuoteCondition QuoteCondition { get; set; }
         public string Symbol { get; set; }
         public DateTimeOffset Timestamp { get; set; }
+        public int Tape { get; set; }
     }
 }
