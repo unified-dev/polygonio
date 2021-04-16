@@ -1,8 +1,6 @@
-﻿using Microsoft.Extensions.ObjectPool;
-using PolygonIo.WebSocket.Contracts;
-
-namespace PolygonIo.WebSocket.Factory
+﻿namespace PolygonIo.WebSocket.Factory
 {
+    /*
     public class PooledPolygonTypesEventFactory : IPooledEventFactory
     {
         public PooledPolygonTypesEventFactory()
@@ -27,4 +25,5 @@ namespace PolygonIo.WebSocket.Factory
         public void ReturntimeAggregate(object aggregate) => this.aggregatePool.Return((TimeAggregate)aggregate);
         public void ReturnStatus(object status) => this.statusPool.Return((Status)status);
     }
+    */
 }

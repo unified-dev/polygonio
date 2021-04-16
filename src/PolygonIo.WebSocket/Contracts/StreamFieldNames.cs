@@ -19,6 +19,7 @@
         public const string AskSize = "as";
         public const string TradeId = "i";
         public const string Tape = "z";
+        public const string AverageTradeSize = "z";
         public const string Price = "p";
         public const string TradeSize = "s";
         public const string TradeConditions = "c";
@@ -31,5 +32,9 @@
         public const string Timestamp = "t";
         public const string StartTimestamp = "s";
         public const string EndTimestamp = "e";
+        public const string TicksVolumeWeightsAveragePrice = "a";
+        public const string TodaysVolumeWeightedAveragePrice = "vw";
+        public const string TodaysOpeningPrice = "op";
+        public const string TodaysAccumulatedVolume = "av";
     }
 }

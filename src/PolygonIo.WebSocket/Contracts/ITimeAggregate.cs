@@ -12,5 +12,9 @@ namespace PolygonIo.WebSocket.Contracts
         DateTimeOffset StartDateTime { get; set; }
         decimal Volume { get; set; }
         string Symbol { get; set; }
+        decimal AverageTradeSize { get; set; }
+        decimal TodaysVolumeWeightedAveragePrice { get; set; }
+        decimal TicksVolumeWeightedAveragePrice { get; set; }
+        decimal TodaysOpeningPrice { get; set; }        
     }
 }

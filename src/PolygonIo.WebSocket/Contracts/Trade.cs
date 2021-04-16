@@ -2,7 +2,7 @@
 
 namespace PolygonIo.WebSocket.Contracts
 {
-    public class Trade : ITrade
+    public struct Trade : ITrade
     {
         public int ExchangeId { get; set; }
         public decimal Price { get; set; }

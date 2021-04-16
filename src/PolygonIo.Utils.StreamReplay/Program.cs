@@ -9,10 +9,8 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.IO.Pipelines;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Threading.Tasks.Dataflow;
 
 namespace PolygonIo.Utils.StreamReplay
 {
@@ -25,41 +23,40 @@ namespace PolygonIo.Utils.StreamReplay
         static long errors = 0;
 
         static ILogger<Program> logger;
-        static Utf8JsonDeserializer deserializer;
-        static IPooledEventFactory pooledEventFactory = new PooledPolygonTypesEventFactory();
-
+        static Utf8JsonDeserializer deserializer;       
+        
         static async Task Main(string[] args)
         {
+            using var fileStream = File.Open(args[0], FileMode.Open);
+            //var sr = new StreamReader(fileStream);
+            //string line = null;
+
+            
             using var log = new LoggerConfiguration().WriteTo.Console().CreateLogger();
             var loggerFactory = new LoggerFactory().AddSerilog(log);
             logger = loggerFactory.CreateLogger<Program>();
 
-            deserializer = new Utf8JsonDeserializer(loggerFactory.CreateLogger<Utf8JsonDeserializer>(), pooledEventFactory);
+            deserializer = new Utf8JsonDeserializer(loggerFactory.CreateLogger<Utf8JsonDeserializer>(), new PolygonTypesEventFactory());
 
-            using var stream = File.Open(args[0], FileMode.Open);
-            var reader = PipeReader.Create(stream);
-
-            var queue = new TransformBlock<byte[], IEnumerable<object>>(
-                                Convert,
-                                new ExecutionDataflowBlockOptions { MaxDegreeOfParallelism = 4, BoundedCapacity = 16 });
-
-            var dispatch = new ActionBlock<IEnumerable<object>>(
-                                    Dispatch,
-                                    new ExecutionDataflowBlockOptions { MaxDegreeOfParallelism = 1, BoundedCapacity = 1 });
-
-            queue.LinkTo(dispatch, new DataflowLinkOptions { PropagateCompletion = true });
+            var reader = PipeReader.Create(fileStream);
 
             var sw = new Stopwatch();
             sw.Start();
 
             while (true)
             {
+
+          //  while ((line = sr.ReadLine()) != null)
+          //  {
+
+          //  sr.ReadLine()
+
                 var result = await reader.ReadAsync();
                 var buffer = result.Buffer;
 
                 while (TryReadLine(ref buffer, out ReadOnlySequence<byte> line))
                 {
-                    await queue.SendAsync(line.ToArray());
+                    Dispatch(Convert(line));
                 }
 
                 // Tell the PipeReader how much of the buffer has been consumed.
@@ -74,9 +71,7 @@ namespace PolygonIo.Utils.StreamReplay
 
             // Mark the PipeReader as complete.
             await reader.CompleteAsync();
-            queue.Complete();
-            await queue.Completion;
-            await dispatch.Completion;
+
             var total = countQuote + countTrade + countAggregates + countStatus;
             logger.LogInformation($"Replayed {total:n0} objects with {errors:n0} errors in {sw.Elapsed.TotalSeconds:n2} seconds ({total/sw.Elapsed.TotalSeconds:n2} objects/second)");
             logger.LogInformation($"Quotes: {countQuote:n0} ({100*countQuote/(float)total:n2}%). Trades: {countTrade:n0} ({100*countTrade/(float)total:n2}%). Aggregates: {countAggregates:n0} ({100*countAggregates/(float)total:n2}%). Statuses: {countStatus:n0} ({100*countStatus/(float)total:n2}%).");
@@ -91,38 +86,35 @@ namespace PolygonIo.Utils.StreamReplay
                     if(item is IQuote)
                     {
                         countQuote++;
-                        pooledEventFactory.ReturnQuote(item);
                     }
                     else if(item is ITrade)
                     {
                         countTrade++;
-                        pooledEventFactory.ReturnTrade(item);
                     }
                     else if(item is ITimeAggregate)
                     {
                         countAggregates++;
-                        pooledEventFactory.ReturntimeAggregate(item);
                     }
                     else if(item is IStatus)
                     {
                         countStatus++;
-                        pooledEventFactory.ReturnStatus(item);
                     }
                 }
             }
         }
 
-        static IEnumerable<object> Convert(byte[] data)
+        static IEnumerable<object> Convert(ReadOnlySequence<byte> data)
         {
             var list = new List<object>();
             try
             {
-                deserializer.Deserialize(new ReadOnlySequence<byte>(data),
+                deserializer.Deserialize(data,
                     (quote) => list.Add(quote),
                     (trade) => list.Add(trade),
                     (aggregate) => list.Add(aggregate),
                     (aggregate) => list.Add(aggregate),
-                    (status) => list.Add(status));                
+                    (status) => list.Add(status),
+                    (error) => logger.LogError(error));                
             }
             catch (Exception ex)
             {

@@ -18,43 +18,45 @@ namespace PolygonIo.WebSocket.Deserializers
             this.logger = logger;
         }
 
-        public void Deserialize(ReadOnlySequence<byte> data, Action<IQuote> onQuote, Action<ITrade> onTrade, Action<ITimeAggregate> onPerSecondAggregate, Action<ITimeAggregate> onPerMinuteAggregate, Action<IStatus> onStatus)
+        public void Deserialize(ReadOnlySequence<byte> data, Action<IQuote> onQuote, Action<ITrade> onTrade, Action<ITimeAggregate> onPerSecondAggregate, Action<ITimeAggregate> onPerMinuteAggregate, Action<IStatus> onStatus, Action<string> onError)
         {
             var reader = new Utf8JsonReader(data);
 
             if (reader.SkipUpTo(JsonTokenType.StartArray) == false)
-                throw new JsonException($"skipped all data and no array found");
+                onError($"skipped all data and no array found");
            
             while (reader.SkipTillExpected(JsonTokenType.StartObject, JsonTokenType.EndArray))
             {
                 try
                 {
                     reader.ExpectNamedProperty(StreamFieldNames.Event);
-                    var ev = reader.ExpectString(StreamFieldNames.Event);
+                    reader.Read();
 
-                    // Order by most expected sequence.
-                    switch (ev)
+                    if (reader.ValueTextEquals(StreamFieldNames.Quote))
                     {
-                        case StreamFieldNames.Quote:
-                            onQuote(reader.DecodeQuote(this.eventDataTypeFactory));
-                            break;
-                        case StreamFieldNames.Trade:
-                            onTrade(reader.DecodeTrade(this.eventDataTypeFactory));
-                            break;
-                        case StreamFieldNames.AggregatePerSecond:
-                            onPerSecondAggregate(reader.DecodeAggregate(this.eventDataTypeFactory));
-                            break;
-                        case StreamFieldNames.AggregatePerMinute:
-                            onPerMinuteAggregate(reader.DecodeAggregate(this.eventDataTypeFactory));
-                            break;
-                        case StreamFieldNames.Status:
-                            onStatus(reader.DecodeStatus(this.eventDataTypeFactory));
-                            break;
+                        onQuote(reader.DecodeQuote(this.eventDataTypeFactory, onError));
+                    }
+                    else if (reader.ValueTextEquals(StreamFieldNames.Trade))
+                    {
+                        onTrade(reader.DecodeTrade(this.eventDataTypeFactory, onError));
+                    }
+                    else if (reader.ValueTextEquals(StreamFieldNames.AggregatePerSecond))
+                    {
+                        onPerSecondAggregate(reader.DecodeAggregate(this.eventDataTypeFactory, onError));
+                    }
+                    else if (reader.ValueTextEquals(StreamFieldNames.AggregatePerMinute))
+                    {
+                        onPerMinuteAggregate(reader.DecodeAggregate(this.eventDataTypeFactory, onError));
+                    }
+                    else if (reader.ValueTextEquals(StreamFieldNames.Status))
+                    {
+                        onStatus(reader.DecodeStatus(this.eventDataTypeFactory, onError));
                     }
                 }
-                catch (JsonException e)
+
+                catch (JsonException ex)
                 {
-                    this.logger.LogError(e, $"decoding stream but will skip past error, encountered {e}");
+                    onError($"Decoding stream but will skip past error, encountered {ex.Message}.");
                 }
             }
         }

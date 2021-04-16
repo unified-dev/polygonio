@@ -2,7 +2,7 @@
   "profiles": {
     "PolygonIo.Utils.StreamReplay": {
       "commandName": "Project",
-      "commandLineArgs": "polygonio_dump_20210412T214854.dmp"
+      "commandLineArgs": "polygonio_dump_20210412T214854.txt"
     }
   }
 }

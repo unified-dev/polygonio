@@ -35,7 +35,7 @@ namespace PolygonIo.Utils.StreamRecorder
 
             var apiKey = configuration.GetSection("PolygonIo").GetValue<string>("ApiKey");
 
-            var filename = $"polygonio_dump_{DateTime.Now.ToString("yyyyMMddTHHmmss")}.dmp";
+            var filename = $"polygonio_dump_{DateTime.Now.ToString("yyyyMMddTHHmmss")}.txt";
 
             using var binaryWriter = new BinaryWriter(File.OpenWrite(filename));
             
