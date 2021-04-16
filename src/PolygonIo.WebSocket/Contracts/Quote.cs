@@ -2,7 +2,7 @@
 
 namespace PolygonIo.WebSocket.Contracts
 {
-    public class Quote : IQuote
+    public struct Quote : IQuote
     {
         public int AskExchangeId { get; set; }
         public decimal AskPrice { get; set; }
@@ -13,5 +13,6 @@ namespace PolygonIo.WebSocket.Contracts
         public QuoteCondition QuoteCondition { get; set; }
         public string Symbol { get; set; }
         public DateTimeOffset Timestamp { get; set; }
+        public int Tape { get; set; }
     }
 }

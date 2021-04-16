@@ -1,5 +1,6 @@
 ﻿namespace PolygonIo.WebSocket.Factory
 {
+    /*
     public interface IPooledEventFactory : IEventFactory
     {
         void ReturnQuote(object quote);
@@ -7,4 +8,5 @@
         void ReturntimeAggregate(object timeAggregate);
         void ReturnStatus(object statis);
     }
+    */
 }

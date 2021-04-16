@@ -50,7 +50,8 @@ namespace PolygonIo.WebSocket
                                     (trade) => list.Add(trade),
                                     (aggregate) => list.Add(aggregate),
                                     (aggregate) => list.Add(aggregate),
-                                    (status) => list.Add(status));
+                                    (status) => list.Add(status),
+                                    (error) => this.logger.LogError(error));
                     }
                     catch(Exception ex)
                     {

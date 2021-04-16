@@ -5,7 +5,6 @@ using PolygonIo.WebSocket.Deserializers;
 using PolygonIo.WebSocket.Factory;
 using System.Buffers;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace PolygonIo.WebSocket.Tests
 {
@@ -32,7 +31,8 @@ namespace PolygonIo.WebSocket.Tests
                                     (trade) => { },
                                     (aggregate) => { },
                                     (aggregate) => { },
-                                    (status) => { s = status; });
+                                    (status) => { s = status; },
+                                    (error) => { });
 
 
             Assert.IsNotEmpty(s.Message);

@@ -13,5 +13,6 @@ namespace PolygonIo.WebSocket.Contracts
         QuoteCondition QuoteCondition { get; set; }
         DateTimeOffset Timestamp { get; set; }
         string Symbol { get; set; }
+        int Tape { get; set; }
     }
 }
