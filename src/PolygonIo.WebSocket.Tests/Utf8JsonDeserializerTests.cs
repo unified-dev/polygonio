@@ -18,9 +18,7 @@ namespace PolygonIo.WebSocket.Tests
         [Test]
         public void CanProcessData()
         {
-            var utf8JsonDeserializer = new Utf8JsonDeserializer(
-                                                NullLogger<Utf8JsonDeserializer>.Instance,
-                                                new EventFactory<Quote, Trade, TimeAggregate, Status>());
+            var utf8JsonDeserializer = new Utf8JsonDeserializer(new EventFactory<Quote, Trade, TimeAggregate, Status>());
 
             var str = "[{ \"ev\":\"status\",\"status\":\"connected\",\"message\":\"Connected Successfully\"}]";
 

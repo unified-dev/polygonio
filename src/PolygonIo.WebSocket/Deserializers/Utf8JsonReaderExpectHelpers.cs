@@ -20,7 +20,7 @@ namespace PolygonIo.WebSocket.Deserializers
             return items.ToArray();
         }
 
-        static public int[] ExpectIntArray(this ref Utf8JsonReader reader, string propertyName)
+        static public int[] ExpectIntArray(this ref Utf8JsonReader reader, char propertyName)
         {
             reader.Expect(JsonTokenType.StartArray);
 
@@ -39,13 +39,25 @@ namespace PolygonIo.WebSocket.Deserializers
             return reader.GetString();
         }
 
+        static public string ExpectString(this ref Utf8JsonReader reader, char propertyName)
+        {
+            reader.Expect(JsonTokenType.String, propertyName);
+            return reader.GetString();
+        }
+
         static public decimal ExpectDecimal(this ref Utf8JsonReader reader, string propertyName)
         {
             reader.Expect(JsonTokenType.Number, propertyName);
             return reader.GetDecimal();
         }
 
-        static public DateTimeOffset ExpectUnixTimeMilliseconds(this ref Utf8JsonReader reader, string propertyName)
+        static public decimal ExpectDecimal(this ref Utf8JsonReader reader, char propertyName)
+        {
+            reader.Expect(JsonTokenType.Number, propertyName);
+            return reader.GetDecimal();
+        }
+
+        static public DateTimeOffset ExpectUnixTimeMilliseconds(this ref Utf8JsonReader reader, char propertyName)
         {
             reader.Expect(JsonTokenType.Number, propertyName);
             var count = reader.GetInt64();
@@ -58,7 +70,23 @@ namespace PolygonIo.WebSocket.Deserializers
             return reader.GetInt32();
         }
 
+        static public int ExpectInt(this ref Utf8JsonReader reader, char propertyName)
+        {
+            reader.Expect(JsonTokenType.Number, propertyName);
+            return reader.GetInt32();
+        }
+
         static public void Expect(this ref Utf8JsonReader reader, JsonTokenType t, string propertyName)
+        {
+            reader.Read();
+
+            if (reader.TokenType != t)
+            {
+                throw new JsonException($"expected {t} for property \"{propertyName}\" found {reader.TokenType} at position {reader.Position.GetInteger()}");
+            }
+        }
+
+        static public void Expect(this ref Utf8JsonReader reader, JsonTokenType t, char propertyName)
         {
             reader.Read();
 

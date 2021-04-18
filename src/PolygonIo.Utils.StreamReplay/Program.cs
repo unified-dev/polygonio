@@ -14,6 +14,7 @@ using System.Threading.Tasks;
 
 namespace PolygonIo.Utils.StreamReplay
 {
+
     class Program
     {
         static long countQuote = 0;
@@ -27,32 +28,26 @@ namespace PolygonIo.Utils.StreamReplay
         
         static async Task Main(string[] args)
         {
-            using var fileStream = File.Open(args[0], FileMode.Open);
-            //var sr = new StreamReader(fileStream);
-            //string line = null;
-
+            // using var fileStream = File.Open(args[0], FileMode.Open);
             
+            var bytes = File.ReadAllBytes(args[0]);
+            var buffer = new ReadOnlySequence<byte>(bytes);
+
             using var log = new LoggerConfiguration().WriteTo.Console().CreateLogger();
             var loggerFactory = new LoggerFactory().AddSerilog(log);
             logger = loggerFactory.CreateLogger<Program>();
 
-            deserializer = new Utf8JsonDeserializer(loggerFactory.CreateLogger<Utf8JsonDeserializer>(), new PolygonTypesEventFactory());
+            deserializer = new Utf8JsonDeserializer(new PolygonTypesEventFactory());
 
-            var reader = PipeReader.Create(fileStream);
+            // var reader = PipeReader.Create(fileStream);
 
             var sw = new Stopwatch();
             sw.Start();
 
-            while (true)
-            {
-
-          //  while ((line = sr.ReadLine()) != null)
-          //  {
-
-          //  sr.ReadLine()
-
-                var result = await reader.ReadAsync();
-                var buffer = result.Buffer;
+            //while (true)
+            //{
+                //var result = await reader.ReadAsync();
+                //var buffer = result.Buffer;
 
                 while (TryReadLine(ref buffer, out ReadOnlySequence<byte> line))
                 {
@@ -60,17 +55,17 @@ namespace PolygonIo.Utils.StreamReplay
                 }
 
                 // Tell the PipeReader how much of the buffer has been consumed.
-                reader.AdvanceTo(buffer.Start, buffer.End);
+                //reader.AdvanceTo(buffer.Start, buffer.End);
 
                 // Stop reading if there's no more data.
-                if (result.IsCompleted)
-                    break;
-            }
+                //if (result.IsCompleted)
+                //   break;
+            //}
 
             sw.Stop();
 
             // Mark the PipeReader as complete.
-            await reader.CompleteAsync();
+            //await reader.CompleteAsync();
 
             var total = countQuote + countTrade + countAggregates + countStatus;
             logger.LogInformation($"Replayed {total:n0} objects with {errors:n0} errors in {sw.Elapsed.TotalSeconds:n2} seconds ({total/sw.Elapsed.TotalSeconds:n2} objects/second)");

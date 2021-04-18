@@ -9,18 +9,16 @@ namespace PolygonIo.WebSocket.Deserializers
 {
     public class Utf8JsonDeserializer : IPolygonDeserializer
     {
-        private readonly ILogger<Utf8JsonDeserializer> logger;
         private readonly IEventFactory eventDataTypeFactory;
 
-        public Utf8JsonDeserializer(ILogger<Utf8JsonDeserializer> logger, IEventFactory eventDataTypeFactory)
+        public Utf8JsonDeserializer(IEventFactory eventDataTypeFactory)
         {
             this.eventDataTypeFactory = eventDataTypeFactory ?? throw new System.ArgumentNullException(nameof(eventDataTypeFactory));
-            this.logger = logger;
         }
 
         public void Deserialize(ReadOnlySequence<byte> data, Action<IQuote> onQuote, Action<ITrade> onTrade, Action<ITimeAggregate> onPerSecondAggregate, Action<ITimeAggregate> onPerMinuteAggregate, Action<IStatus> onStatus, Action<string> onError)
         {
-            var reader = new Utf8JsonReader(data);
+            var reader = new Utf8JsonReader(data, true, new JsonReaderState());
 
             if (reader.SkipUpTo(JsonTokenType.StartArray) == false)
                 onError($"skipped all data and no array found");
@@ -30,25 +28,25 @@ namespace PolygonIo.WebSocket.Deserializers
                 try
                 {
                     reader.ExpectNamedProperty(StreamFieldNames.Event);
-                    reader.Read();
+                    var ev = reader.ExpectString(StreamFieldNames.Event);
 
-                    if (reader.ValueTextEquals(StreamFieldNames.Quote))
+                    if (ev[0] == StreamFieldNames.Quote)
                     {
                         onQuote(reader.DecodeQuote(this.eventDataTypeFactory, onError));
                     }
-                    else if (reader.ValueTextEquals(StreamFieldNames.Trade))
+                    else if (ev[0] == StreamFieldNames.Trade)
                     {
                         onTrade(reader.DecodeTrade(this.eventDataTypeFactory, onError));
                     }
-                    else if (reader.ValueTextEquals(StreamFieldNames.AggregatePerSecond))
+                    else if (ev[0] == StreamFieldNames.AggregatePerSecond)
                     {
                         onPerSecondAggregate(reader.DecodeAggregate(this.eventDataTypeFactory, onError));
                     }
-                    else if (reader.ValueTextEquals(StreamFieldNames.AggregatePerMinute))
+                    else if (ev == StreamFieldNames.AggregatePerMinute)
                     {
                         onPerMinuteAggregate(reader.DecodeAggregate(this.eventDataTypeFactory, onError));
                     }
-                    else if (reader.ValueTextEquals(StreamFieldNames.Status))
+                    else if (ev == StreamFieldNames.Status)
                     {
                         onStatus(reader.DecodeStatus(this.eventDataTypeFactory, onError));
                     }
