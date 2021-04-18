@@ -3,6 +3,7 @@ using NUnit.Framework;
 using PolygonIo.WebSocket.Contracts;
 using PolygonIo.WebSocket.Deserializers;
 using PolygonIo.WebSocket.Factory;
+using System;
 using System.Buffers;
 using System.Text;
 
@@ -24,7 +25,7 @@ namespace PolygonIo.WebSocket.Tests
 
             IStatus s = null;
             utf8JsonDeserializer.Deserialize(
-                                    new ReadOnlySequence<byte>(Encoding.UTF8.GetBytes(str)),
+                                    new ReadOnlySpan<byte>(Encoding.UTF8.GetBytes(str)),
                                     (quote) => { },
                                     (trade) => { },
                                     (aggregate) => { },

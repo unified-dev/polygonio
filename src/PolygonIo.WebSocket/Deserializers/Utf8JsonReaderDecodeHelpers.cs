@@ -13,37 +13,27 @@ namespace PolygonIo.WebSocket.Deserializers
         {
             var trade = factory.NewTrade();
 
-            reader.Expect(JsonTokenType.PropertyName, JsonTokenType.EndObject);
-            _ = reader.GetString();
-            trade.Symbol = reader.ExpectString(StreamFieldNames.Symbol);
-
-            reader.Expect(JsonTokenType.PropertyName, JsonTokenType.EndObject);
-            _ = reader.GetString();
-            trade.TradeId = reader.ExpectString(StreamFieldNames.TradeId);
-
-            reader.Expect(JsonTokenType.PropertyName, JsonTokenType.EndObject);
-            _ = reader.GetString();
-            trade.ExchangeId = reader.ExpectInt(StreamFieldNames.ExchangeId);
-
-            reader.Expect(JsonTokenType.PropertyName, JsonTokenType.EndObject);
-            _ = reader.GetString();
-            trade.Price = reader.ExpectDecimal(StreamFieldNames.Price);
-
             while (reader.Expect(JsonTokenType.PropertyName, JsonTokenType.EndObject))
             {
-                var propertyName = reader.GetString();
-
-                if (propertyName[0] == StreamFieldNames.TradeSize)
+                if (reader.ValueSpanIs(StreamFieldNames.TradeId))
+                    trade.TradeId = reader.ExpectString(StreamFieldNames.TradeId);
+                else if (reader.ValueSpanIs(StreamFieldNames.ExchangeId))
+                    trade.ExchangeId = reader.ExpectInt(StreamFieldNames.ExchangeId);
+                else if (reader.ValueSpanIs(StreamFieldNames.Price))
+                    trade.Price = reader.ExpectDecimal(StreamFieldNames.Price);
+                else if (reader.ValueSpanIs(StreamFieldNames.TradeSize))
                     trade.TradeSize = reader.ExpectDecimal(StreamFieldNames.TradeSize);
-                if (propertyName[0] == StreamFieldNames.TradeConditions)
+                else if (reader.ValueSpanIs(StreamFieldNames.TradeConditions))
                     trade.TradeConditions = reader.ExpectIntArray(StreamFieldNames.TradeConditions).Select(x => (TradeCondition)x).ToArray();
-                else if (propertyName[0] == StreamFieldNames.Timestamp)
+                else if (reader.ValueSpanIs(StreamFieldNames.Timestamp))
                     trade.Timestamp = reader.ExpectUnixTimeMilliseconds(StreamFieldNames.Timestamp);
-                else if (propertyName[0] == StreamFieldNames.Tape)
+                else if (reader.ValueSpanIs(StreamFieldNames.Tape))
                     trade.Tape = reader.ExpectInt(StreamFieldNames.Tape);
+                else if (reader.ValueSpanIs(StreamFieldNames.Symbol))
+                    trade.Symbol = reader.ExpectString(StreamFieldNames.Symbol);
+                else
+                    reader.Skip();
             }
-            //onError(GetUnexpectedPropertyMessage(trade.GetType().ToString(), reader.GetString()));
-            //reader.Skip();
 
             return trade;
         }
@@ -52,16 +42,15 @@ namespace PolygonIo.WebSocket.Deserializers
         {
             var status = factory.NewStatus();
 
-            reader.Expect(JsonTokenType.PropertyName, JsonTokenType.EndObject);
-            _ = reader.GetString();
-            status.Result = reader.ExpectString(StreamFieldNames.Status);
-
-            reader.Expect(JsonTokenType.PropertyName, JsonTokenType.EndObject);
-            _ = reader.GetString();
-            status.Message = reader.ExpectString(StreamFieldNames.Message);
-
-            //onError(GetUnexpectedPropertyMessage(status.GetType().ToString(), reader.GetString()));
-            //reader.Skip();
+            while (reader.Expect(JsonTokenType.PropertyName, JsonTokenType.EndObject))
+            {
+                if (reader.ValueSpanIs(StreamFieldNames.Status))
+                    status.Result = reader.ExpectString(StreamFieldNames.Status);
+                else if (reader.ValueSpanIs(StreamFieldNames.Message))
+                    status.Message = reader.ExpectString(StreamFieldNames.Message);
+                else
+                    reader.Skip();
+            }
 
             return status;
         }
@@ -70,60 +59,37 @@ namespace PolygonIo.WebSocket.Deserializers
         {
             var timeAggregate = factory.NewTimeAggregate();
 
-            reader.Expect(JsonTokenType.PropertyName, JsonTokenType.EndObject);
-            _ = reader.GetString();
-            timeAggregate.Symbol = reader.ExpectString(StreamFieldNames.Symbol);
-
-            reader.Expect(JsonTokenType.PropertyName, JsonTokenType.EndObject);
-            _ = reader.GetString();
-            timeAggregate.Volume = reader.ExpectDecimal(StreamFieldNames.TickVolume);
-
-            reader.Expect(JsonTokenType.PropertyName, JsonTokenType.EndObject);
-            _ = reader.GetString();
-            timeAggregate.TodaysVolumeWeightedAveragePrice = reader.ExpectDecimal(StreamFieldNames.TodaysAccumulatedVolume);
-
-            reader.Expect(JsonTokenType.PropertyName, JsonTokenType.EndObject);
-            _ = reader.GetString();
-            timeAggregate.TodaysOpeningPrice = reader.ExpectDecimal(StreamFieldNames.TodaysOpeningPrice);
-
-            reader.Expect(JsonTokenType.PropertyName, JsonTokenType.EndObject);
-            _ = reader.GetString();
-            timeAggregate.TodaysVolumeWeightedAveragePrice = reader.ExpectDecimal(StreamFieldNames.TodaysVolumeWeightedAveragePrice);
-
-            reader.Expect(JsonTokenType.PropertyName, JsonTokenType.EndObject);
-            _ = reader.GetString();
-            timeAggregate.Open = reader.ExpectDecimal(StreamFieldNames.TickOpen);
-
-            reader.Expect(JsonTokenType.PropertyName, JsonTokenType.EndObject);
-            _ = reader.GetString();
-            timeAggregate.Close = reader.ExpectDecimal(StreamFieldNames.TickClose);
-
-            reader.Expect(JsonTokenType.PropertyName, JsonTokenType.EndObject);
-            _ = reader.GetString();
-            timeAggregate.High = reader.ExpectDecimal(StreamFieldNames.TickHigh);
-
-            reader.Expect(JsonTokenType.PropertyName, JsonTokenType.EndObject);
-            _ = reader.GetString();
-            timeAggregate.Low = reader.ExpectDecimal(StreamFieldNames.TickLow);
-
-            reader.Expect(JsonTokenType.PropertyName, JsonTokenType.EndObject);
-            _ = reader.GetString();
-            timeAggregate.TicksVolumeWeightedAveragePrice = reader.ExpectDecimal(StreamFieldNames.TicksVolumeWeightsAveragePrice);
-
-            reader.Expect(JsonTokenType.PropertyName, JsonTokenType.EndObject);
-            _ = reader.GetString();
-            timeAggregate.AverageTradeSize = reader.ExpectDecimal(StreamFieldNames.AverageTradeSize);
-
-            reader.Expect(JsonTokenType.PropertyName, JsonTokenType.EndObject);
-            _ = reader.GetString();
-            timeAggregate.StartDateTime = reader.ExpectUnixTimeMilliseconds(StreamFieldNames.StartTimestamp);
-
-            reader.Expect(JsonTokenType.PropertyName, JsonTokenType.EndObject);
-            _ = reader.GetString();
-            timeAggregate.EndDateTime = reader.ExpectUnixTimeMilliseconds(StreamFieldNames.EndTimestamp);
-
-            //onError(GetUnexpectedPropertyMessage(timeAggregate.GetType().ToString(), reader.GetString()));
-            //reader.Skip();                
+            while (reader.Expect(JsonTokenType.PropertyName, JsonTokenType.EndObject))
+            {
+                if (reader.ValueSpanIs(StreamFieldNames.TickVolume))
+                    timeAggregate.Volume = reader.ExpectDecimal(StreamFieldNames.TickVolume);
+                else if (reader.ValueSpanIs(StreamFieldNames.TodaysAccumulatedVolume))
+                    timeAggregate.TodaysVolumeWeightedAveragePrice = reader.ExpectDecimal(StreamFieldNames.TodaysAccumulatedVolume);
+                else if (reader.ValueSpanIs(StreamFieldNames.TodaysOpeningPrice))
+                    timeAggregate.TodaysOpeningPrice = reader.ExpectDecimal(StreamFieldNames.TodaysOpeningPrice);
+                else if (reader.ValueSpanIs(StreamFieldNames.TodaysVolumeWeightedAveragePrice))
+                    timeAggregate.TodaysVolumeWeightedAveragePrice = reader.ExpectDecimal(StreamFieldNames.TodaysVolumeWeightedAveragePrice);
+                else if (reader.ValueSpanIs(StreamFieldNames.TickOpen))
+                    timeAggregate.Open = reader.ExpectDecimal(StreamFieldNames.TickOpen);
+                else if (reader.ValueSpanIs(StreamFieldNames.TickClose))
+                    timeAggregate.Close = reader.ExpectDecimal(StreamFieldNames.TickClose);
+                else if (reader.ValueSpanIs(StreamFieldNames.TickHigh))
+                    timeAggregate.High = reader.ExpectDecimal(StreamFieldNames.TickHigh);
+                else if (reader.ValueSpanIs(StreamFieldNames.TickLow))
+                    timeAggregate.Low = reader.ExpectDecimal(StreamFieldNames.TickLow);
+                else if (reader.ValueSpanIs(StreamFieldNames.TicksVolumeWeightsAveragePrice))
+                    timeAggregate.TicksVolumeWeightedAveragePrice = reader.ExpectDecimal(StreamFieldNames.TicksVolumeWeightsAveragePrice);
+                else if (reader.ValueSpanIs(StreamFieldNames.AverageTradeSize))
+                    timeAggregate.AverageTradeSize = reader.ExpectDecimal(StreamFieldNames.AverageTradeSize);
+                else if (reader.ValueSpanIs(StreamFieldNames.StartTimestamp))
+                    timeAggregate.StartDateTime = reader.ExpectUnixTimeMilliseconds(StreamFieldNames.StartTimestamp);
+                else if (reader.ValueSpanIs(StreamFieldNames.EndTimestamp))
+                    timeAggregate.EndDateTime = reader.ExpectUnixTimeMilliseconds(StreamFieldNames.EndTimestamp);
+                else if (reader.ValueSpanIs(StreamFieldNames.Symbol))
+                    timeAggregate.Symbol = reader.ExpectString(StreamFieldNames.Symbol);
+                else
+                    reader.Skip();
+            }
 
             return timeAggregate;
         }
@@ -134,43 +100,33 @@ namespace PolygonIo.WebSocket.Deserializers
             quote.BidExchangeId = -1; // in case this is a quote without bid
             quote.AskExchangeId = -1; // in case this is a quote without ask
 
-            reader.Expect(JsonTokenType.PropertyName, JsonTokenType.EndObject);
-            _ = reader.GetString();
-            quote.Symbol = reader.ExpectString(StreamFieldNames.Symbol);
-
             while (reader.Expect(JsonTokenType.PropertyName, JsonTokenType.EndObject))
             {
-                if (reader.ValueTextEquals(new ReadOnlySpan<char>(new[] { StreamFieldNames.BidExchangeId[0], StreamFieldNames.BidExchangeId[1] }))) 
+                if (reader.ValueSpanIs(StreamFieldNames.BidExchangeId))
                     quote.BidExchangeId = reader.ExpectInt(StreamFieldNames.BidExchangeId);
-                else if (reader.ValueTextEquals(new ReadOnlySpan<char>(new[] { StreamFieldNames.BidPrice[0], StreamFieldNames.BidPrice[1] })))
+                else if (reader.ValueSpanIs(StreamFieldNames.BidPrice))
                     quote.BidPrice = reader.ExpectDecimal(StreamFieldNames.BidPrice);
-                else if (reader.ValueTextEquals(new ReadOnlySpan<char>(new[] { StreamFieldNames.BidSize[0], StreamFieldNames.BidSize[1] })))
+                else if (reader.ValueSpanIs(StreamFieldNames.BidSize))
                     quote.BidSize = reader.ExpectDecimal(StreamFieldNames.BidSize);
-                else if (reader.ValueTextEquals(new ReadOnlySpan<char>(new[] { StreamFieldNames.AskExchangeId[0], StreamFieldNames.AskExchangeId[1] })))
+                else if (reader.ValueSpanIs(StreamFieldNames.AskExchangeId))
                     quote.AskExchangeId = reader.ExpectInt(StreamFieldNames.AskExchangeId);
-                else if (reader.ValueTextEquals(new ReadOnlySpan<char>(new[] { StreamFieldNames.AskPrice[0], StreamFieldNames.AskPrice[1] })))
+                else if (reader.ValueSpanIs(StreamFieldNames.AskPrice))
                     quote.AskPrice = reader.ExpectDecimal(StreamFieldNames.AskPrice);
-                else if (reader.ValueTextEquals(new ReadOnlySpan<char>(new[] { StreamFieldNames.AskSize[0], StreamFieldNames.AskSize[1] })))
+                else if (reader.ValueSpanIs(StreamFieldNames.AskSize))
                     quote.AskSize = reader.ExpectDecimal(StreamFieldNames.AskSize);
-                else if (reader.ValueTextEquals(new ReadOnlySpan<char>(new[] {  StreamFieldNames.Tape })))
+                else if (reader.ValueSpanIs(StreamFieldNames.Tape))
                     quote.Tape = reader.ExpectInt(StreamFieldNames.Tape);
-                else if (reader.ValueTextEquals(new ReadOnlySpan<char>(new[] { StreamFieldNames.QuoteCondition })))
+                else if (reader.ValueSpanIs(StreamFieldNames.QuoteCondition))
                     quote.QuoteCondition = (QuoteCondition)reader.ExpectInt(StreamFieldNames.QuoteCondition);
-                else if (reader.ValueTextEquals(new ReadOnlySpan<char>(new[] { StreamFieldNames.Timestamp })))
+                else if (reader.ValueSpanIs(StreamFieldNames.Timestamp))
                     quote.Timestamp = reader.ExpectUnixTimeMilliseconds(StreamFieldNames.Timestamp);
+                else if(reader.ValueSpanIs(StreamFieldNames.Symbol))
+                    quote.Symbol = reader.ExpectString(StreamFieldNames.Symbol);
                 else
-                {
-                    onError(GetUnexpectedPropertyMessage(quote.GetType().ToString(), reader.GetString()));
                     reader.Skip();
-                }
             }
 
             return quote;
-        }
-
-        private static string GetUnexpectedPropertyMessage(string typeName, string propertyName)
-        {
-            return $"Decoding {typeName} found unexpected property {propertyName}, skipping.";
         }
     }
 }

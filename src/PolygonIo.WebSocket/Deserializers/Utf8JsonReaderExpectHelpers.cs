@@ -82,7 +82,7 @@ namespace PolygonIo.WebSocket.Deserializers
 
             if (reader.TokenType != t)
             {
-                throw new JsonException($"expected {t} for property \"{propertyName}\" found {reader.TokenType} at position {reader.Position.GetInteger()}");
+                throw new JsonException($"Expected {t} for property \"{propertyName}\" found {reader.TokenType} at position {reader.Position.GetInteger()}.");
             }
         }
 
@@ -92,7 +92,7 @@ namespace PolygonIo.WebSocket.Deserializers
 
             if (reader.TokenType != t)
             {
-                throw new JsonException($"expected {t} for property \"{propertyName}\" found {reader.TokenType} at position {reader.Position.GetInteger()}");
+                throw new JsonException($"Expected {t} for property \"{propertyName}\" found {reader.TokenType} at position {reader.Position.GetInteger()}.");
             }
         }
 
@@ -102,7 +102,7 @@ namespace PolygonIo.WebSocket.Deserializers
 
             if (reader.TokenType != t)
             {
-                throw new JsonException($"expected {t} found {reader.TokenType} at position {reader.Position.GetInteger()}");
+                throw new JsonException($"Expected {t} found {reader.TokenType} at position {reader.Position.GetInteger()}.");
             }
         }
 
@@ -113,7 +113,7 @@ namespace PolygonIo.WebSocket.Deserializers
             var foundPropertyName = reader.GetString();
 
             if (foundPropertyName != StreamFieldNames.Event)
-                throw new JsonException($"expected {StreamFieldNames.Event} found {foundPropertyName} at position {reader.Position.GetInteger()}");
+                throw new JsonException($"Expected {StreamFieldNames.Event} found {foundPropertyName} at position {reader.Position.GetInteger()}.");
         }
 
         static public bool Expect(this ref Utf8JsonReader reader, JsonTokenType a, JsonTokenType b)
@@ -125,7 +125,7 @@ namespace PolygonIo.WebSocket.Deserializers
             if (reader.TokenType == b)
                 return false;
 
-            throw new JsonException($"expected {a} found {b} at position {reader.Position.GetInteger()}");
+            throw new JsonException($"Expected {a} found {b} at position {reader.Position.GetInteger()}.");
         }
 
         static public bool SkipUpTo(this ref Utf8JsonReader reader, JsonTokenType a)
@@ -149,7 +149,7 @@ namespace PolygonIo.WebSocket.Deserializers
             if (reader.TokenType == b)
                 return false;
 
-            throw new JsonException($"expected {a} found {b} at position {reader.Position.GetInteger()}");
+            throw new JsonException($"Expected {a} found {b} at position {reader.Position.GetInteger()}.");
         }
     }
 }
