@@ -36,30 +36,33 @@ namespace PolygonIo.WebSocket
 
         unsafe IEnumerable<object> Decode(ReadOnlySequence<byte> data)
         {
-            var list = new List<object>();
+            Span<byte> localBuffer = data.Length < 8_192 ? stackalloc byte[(int)data.Length] : new byte[(int)data.Length];
 
-            Span<byte> localBuffer = data.Length < 8_192 ? stackalloc byte[(int)data.Length] : new byte[(int)data.Length];                
-            data.FirstSpan.CopyTo(localBuffer);
+            data.ToArray().CopyTo(localBuffer);
+            /*data.FirstSpan.CopyTo(localBuffer);
 
             if (data.IsSingleSegment == false)
             {
                 // TODO: Allow arbitary number of frames.
-                var otherStart = localBuffer.Slice(0, localBuffer.Length);                    
+                var otherStart = localBuffer.Slice(data.FirstSpan.Length, localBuffer.Length - data.FirstSpan.Length);                    
                 var enumerator = data.GetEnumerator();
                 enumerator.MoveNext();
                 enumerator.Current.Span.CopyTo(otherStart);                
-            }
+            }*/
 
             // We are using PolygonConnection with constructor parameter isUsingArrayPool = true, it has
             // allocated buffers for us from the shared pool - so here we must return buffers.
             foreach (var chunk in data)
             {
-                if (MemoryMarshal.TryGetArray(chunk, out var segment))
-                    ArrayPool<byte>.Shared.Return(segment.Array);
+                 if (MemoryMarshal.TryGetArray(chunk, out var segment))
+                     ArrayPool<byte>.Shared.Return(segment.Array);
             }
+           
+            var list = new List<object>();
 
             try
             {
+
                 deserializer.Deserialize(localBuffer,
                             (quote) => list.Add(quote),
                             (trade) => list.Add(trade),
@@ -70,7 +73,7 @@ namespace PolygonIo.WebSocket
             }
             catch(Exception ex)
             {
-                this.logger.LogError(ex, $"Error deserializing '{Encoding.UTF8.GetString(data.ToArray())}' ({ex.Message}).");
+                this.logger.LogError(ex, $"Error deserializing '{Encoding.UTF8.GetString(localBuffer.ToArray())}' ({ex.Message}).");
             }
 
             // Return data.

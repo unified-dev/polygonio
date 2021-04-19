@@ -11,7 +11,7 @@ namespace PolygonIo.WebSocket
 {
     public class PolygonConnection : IDisposable
     {
-        const int ReceiveChunkSize = 2048;
+        const int ReceiveChunkSize = 8192;
         private byte[] internalBufferIfArrayPoolNotUsed;
         private readonly ILogger<PolygonConnection> logger;
         private readonly TimeSpan keepAliveInterval;
