@@ -35,10 +35,8 @@ namespace PolygonIo.WebSocket
             if (result.EndOfMessage && startChunk != null)
             {
 
-                if (startChunk.Next == null)
-                    frame = new ReadOnlySequence<byte>(startChunk.Memory);
-                else
-                    frame = new ReadOnlySequence<byte>(startChunk, 0, currentChunk, currentChunk.Memory.Length);
+                frame = startChunk.Next == null
+                    ? new ReadOnlySequence<byte>(startChunk.Memory) : new ReadOnlySequence<byte>(startChunk, 0, currentChunk, currentChunk.Memory.Length);
 
                 startChunk = currentChunk = null; // Reset so we can accept new chunks from scratch.
                 return true;
