@@ -8,11 +8,11 @@ using System.Threading.Tasks;
 
 namespace PolygonIo.WebSocket.Example
 {
-    class Program
+    internal class Program
     {
         static ILogger<Program> logger;
         
-        static void Main(string[] args)
+        public static void Main(string[] args)
         {
             try
             {
@@ -37,14 +37,14 @@ namespace PolygonIo.WebSocket.Example
 
                 var cts = new CancellationTokenSource();
 
-                var tickers = new[] { "SPY", "QQQ", "IWM", "VXX", "MSFT", "TSLA", "RBLX", "GME", "AMC", "AMZN", "AMD", "INTC", "AAL", "UAL" };
+                var tickers = new[] { "SPY", "QQQ", "IWM", "VXX", "MSFT", "TSLA", "RBLX", "GME", "AMC", "NNOX", "BNGO", "PLTR", "AMZN", "AMD", "INTC", "AAL", "UAL" };
 
                 polygonWebSocket.Start(
                                     tickers,
-                                    (trade) => PrintAndReturnTask(trade),
-                                    (quote) => PrintAndReturnTask(quote),
-                                    (aggregate) => PrintAndReturnTask(aggregate),
-                                    (status) => PrintAndReturnTask(status));
+                                    PrintAndReturnTask,
+                                    PrintAndReturnTask,
+                                    PrintAndReturnTask,
+                                    PrintAndReturnTask);
 
                 Console.ReadKey();
 
@@ -56,7 +56,7 @@ namespace PolygonIo.WebSocket.Example
             }
         }
 
-        static Task PrintAndReturnTask(object obj)
+        private static Task PrintAndReturnTask(object obj)
         {
             logger.LogInformation($"{obj.GetType()}\n{JsonConvert.SerializeObject(obj, Formatting.Indented)}");
             return Task.CompletedTask;

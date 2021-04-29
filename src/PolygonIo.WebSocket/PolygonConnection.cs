@@ -11,7 +11,7 @@ namespace PolygonIo.WebSocket
 {
     public class PolygonConnection : IDisposable
     {
-        const int ReceiveChunkSize = 8192;
+        private readonly int receiveChunkSize;
         private byte[] internalBufferIfArrayPoolNotUsed;
         private readonly ILogger<PolygonConnection> logger;
         private readonly TimeSpan keepAliveInterval;
@@ -22,29 +22,27 @@ namespace PolygonIo.WebSocket
         private Task loopTask;
         private CancellationTokenSource cts = null;
 
-        public PolygonConnection(string apiKey, string apiUrl, TimeSpan keepAliveInterval, ILoggerFactory loggerFactory, bool isUsingArrayPool = false)
+        public PolygonConnection(string apiKey, string apiUrl, TimeSpan keepAliveInterval, ILoggerFactory loggerFactory, bool isUsingArrayPool = false, int receiveChunkSize = 4096)
         {
             this.uri = string.IsNullOrEmpty(apiUrl) ? throw new ArgumentException($"'{nameof(apiUrl)}' cannot be null or empty.", nameof(apiUrl)) : new Uri(apiUrl);
             this.apiKey = apiKey ?? throw new ArgumentNullException(nameof(apiKey));
+            this.receiveChunkSize = receiveChunkSize;
             this.keepAliveInterval = keepAliveInterval;
             this.isUsingArrayPool = isUsingArrayPool;
             this.logger = loggerFactory.CreateLogger<PolygonConnection>();
         }
 
-        ArraySegment<byte> GetBuffer()
+        private ArraySegment<byte> GetBuffer()
         {
             if (this.isUsingArrayPool)
-                return ArrayPool<byte>.Shared.Rent(ReceiveChunkSize); // Rent a buffer.
+                return ArrayPool<byte>.Shared.Rent(this.receiveChunkSize); // Rent a buffer.
             else
             {
-                if(this.internalBufferIfArrayPoolNotUsed == null)
-                    this.internalBufferIfArrayPoolNotUsed = new byte[ReceiveChunkSize];
-
-                return this.internalBufferIfArrayPoolNotUsed;
+                return this.internalBufferIfArrayPoolNotUsed ??= new byte[this.receiveChunkSize];
             }
         }
 
-        async Task Loop(IEnumerable<string> tickers, Func<ReadOnlySequence<byte>,Task> dispatch, CancellationToken cancellationToken)
+        private async Task Loop(IEnumerable<string> tickers, Func<ReadOnlySequence<byte>,Task> dispatch, CancellationToken cancellationToken)
         {           
             this.logger.LogInformation($"Entering {nameof(PolygonConnection.Loop)}.");
 

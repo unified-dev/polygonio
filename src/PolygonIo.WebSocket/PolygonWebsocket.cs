@@ -15,20 +15,23 @@ using System.Linq;
 namespace PolygonIo.WebSocket
 {
     public class PolygonWebsocket : IDisposable
-    {        
+    {
+        private readonly int stackAllocLength;
         private readonly ILogger<PolygonWebsocket> logger;
         private readonly IPolygonDeserializer deserializer;
         private int isRunning;
         private ActionBlock<IEnumerable<object>> dispatchBlock;
         private readonly PolygonConnection polygonConnection;
 
-        public PolygonWebsocket(string apiKey, string apiUrl, int reconnectTimeout, ILoggerFactory loggerFactory)
-            : this(apiKey, apiUrl, reconnectTimeout, loggerFactory, new PolygonTypesEventFactory())
+        public PolygonWebsocket(string apiKey, string apiUrl, int reconnectTimeout, ILoggerFactory loggerFactory, int stackAllocLength = 32768)
+            : this(apiKey, apiUrl, reconnectTimeout, loggerFactory, new PolygonTypesEventFactory(), stackAllocLength)
         {
+            
         }
 
-        public PolygonWebsocket(string apiKey, string apiUrl, int reconnectTimeout, ILoggerFactory loggerFactory, IEventFactory eventFactory)
+        public PolygonWebsocket(string apiKey, string apiUrl, int reconnectTimeout, ILoggerFactory loggerFactory, IEventFactory eventFactory, int stackAllocLength = 32768)
         {
+            this.stackAllocLength = stackAllocLength;
             this.logger = loggerFactory.CreateLogger<PolygonWebsocket>();
             this.deserializer = new Utf8JsonDeserializer(eventFactory);
             this.polygonConnection = new PolygonConnection(apiKey, apiUrl, TimeSpan.FromSeconds(reconnectTimeout), loggerFactory, true);            
@@ -36,19 +39,9 @@ namespace PolygonIo.WebSocket
 
         unsafe IEnumerable<object> Decode(ReadOnlySequence<byte> data)
         {
-            Span<byte> localBuffer = data.Length < 8_192 ? stackalloc byte[(int)data.Length] : new byte[(int)data.Length];
+            Span<byte> localBuffer = data.Length < this.stackAllocLength ? stackalloc byte[(int)data.Length] : new byte[(int)data.Length];
 
-            data.ToArray().CopyTo(localBuffer);
-            /*data.FirstSpan.CopyTo(localBuffer);
-
-            if (data.IsSingleSegment == false)
-            {
-                // TODO: Allow arbitary number of frames.
-                var otherStart = localBuffer.Slice(data.FirstSpan.Length, localBuffer.Length - data.FirstSpan.Length);                    
-                var enumerator = data.GetEnumerator();
-                enumerator.MoveNext();
-                enumerator.Current.Span.CopyTo(otherStart);                
-            }*/
+            data.CopyTo(localBuffer); //  This will do a multi-segment copy of the Sequence for us in .net framework.
 
             // We are using PolygonConnection with constructor parameter isUsingArrayPool = true, it has
             // allocated buffers for us from the shared pool - so here we must return buffers.
@@ -62,7 +55,6 @@ namespace PolygonIo.WebSocket
 
             try
             {
-
                 deserializer.Deserialize(localBuffer,
                             (quote) => list.Add(quote),
                             (trade) => list.Add(trade),

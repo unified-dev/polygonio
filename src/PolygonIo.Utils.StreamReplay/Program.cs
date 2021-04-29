@@ -16,37 +16,34 @@ using System.Threading.Tasks;
 
 namespace PolygonIo.Utils.StreamReplay
 {
-    class Program
+    internal class Program
     {
-        static long countQuote = 0;
-        static long countTrade= 0;
-        static long countAggregates = 0;
-        static long countStatus = 0;
-        static long errors = 0;
+        private static long countQuote = 0;
+        private static long countTrade= 0;
+        private static long countAggregates = 0;
+        private static long countStatus = 0;
+        private static long errors = 0;
+        private static ILogger<Program> logger;
+        private static Utf8JsonDeserializer deserializer;
 
-        static ILogger<Program> logger;
-        static Utf8JsonDeserializer deserializer;       
-        
-        static void Main(string[] args)
+        public static async Task Main(string[] args)
         {
-            // using var fileStream = File.Open(args[0], FileMode.Open);
-            
-            var bytes = File.ReadAllBytes(args[0]);
-            //var buffer = new ReadOnlySequence<byte>(bytes);
+            await using var fileStream = File.Open(args[0], FileMode.Open);
+            var reader = PipeReader.Create(fileStream);
 
             using var log = new LoggerConfiguration().WriteTo.Console().CreateLogger();
             var loggerFactory = new LoggerFactory().AddSerilog(log);
             logger = loggerFactory.CreateLogger<Program>();
-
+            
             deserializer = new Utf8JsonDeserializer(new PolygonTypesEventFactory());
-
-            // var reader = PipeReader.Create(fileStream);
 
             var sw = new Stopwatch();
             sw.Start();
 
-            var lineLengths = new List<int>();
+            var lineLengths = new List<long>();
 
+            /*
+            var bytes = File.ReadAllBytes(args[0]);
             var start = 0;
             for(var i = 0; i < bytes.Length; i++)
             {
@@ -59,44 +56,31 @@ namespace PolygonIo.Utils.StreamReplay
                     lineLengths.Add(line.Length);
                 }
             }
+            */
 
-
-           /* using (var reader = new BinaryReader(fileStream))
+            while (true)
             {
-                var i = 0;
-                ReadOnlySpan<byte> line = null;
-                while ((line = reader.ReadLine()) != null)
-                {
-                    
-                    
-                    i++;
-                    //Dispatch(Convert(line));
-                }
-                Console.WriteLine("Read line " + i);
-            }*/
+                var result = await reader.ReadAsync();
+                var buffer = result.Buffer;
 
-                //while (true)
-                //{
-                //var result = await reader.ReadAsync();
-                //var buffer = result.Buffer;
-
-               /* while (TryReadLine(ref buffer, out ReadOnlySequence<byte> line))
+                while (TryReadLine(ref buffer, out var line))
                 {
-                    Dispatch(Convert(line));
+                    Dispatch(Convert(line.ToArray()));
+                    lineLengths.Add(line.Length);
                 }
-               */
+               
                 // Tell the PipeReader how much of the buffer has been consumed.
-                //reader.AdvanceTo(buffer.Start, buffer.End);
+                reader.AdvanceTo(buffer.Start, buffer.End);
 
                 // Stop reading if there's no more data.
-                //if (result.IsCompleted)
-                //   break;
-            //}
+                if (result.IsCompleted)
+                   break;
+            }
 
             sw.Stop();
 
             // Mark the PipeReader as complete.
-            //await reader.CompleteAsync();
+            await reader.CompleteAsync();
 
             var total = countQuote + countTrade + countAggregates + countStatus;
             logger.LogInformation($"Read {lineLengths.Count:n0} lines. Average {lineLengths.Average():n2} bytes per line (max: {lineLengths.Max():n0} / min: {lineLengths.Min():n0}).");
@@ -104,33 +88,32 @@ namespace PolygonIo.Utils.StreamReplay
             logger.LogInformation($"Quotes: {countQuote:n0} ({100*countQuote/(float)total:n2}%). Trades: {countTrade:n0} ({100*countTrade/(float)total:n2}%). Aggregates: {countAggregates:n0} ({100*countAggregates/(float)total:n2}%). Statuses: {countStatus:n0} ({100*countStatus/(float)total:n2}%).");
         }
 
-        static void Dispatch(IEnumerable<object> data)
+        private static void Dispatch(IEnumerable<object> data)
         {
-            if (data != null)
+            if (data == null)
+                return;
+
+            foreach(var item in data)
             {
-                foreach(var item in data)
+                switch (item)
                 {
-                    if(item is IQuote)
-                    {
+                    case IQuote:
                         countQuote++;
-                    }
-                    else if(item is ITrade)
-                    {
+                        break;
+                    case ITrade:
                         countTrade++;
-                    }
-                    else if(item is ITimeAggregate)
-                    {
+                        break;
+                    case ITimeAggregate:
                         countAggregates++;
-                    }
-                    else if(item is IStatus)
-                    {
+                        break;
+                    case IStatus:
                         countStatus++;
-                    }
+                        break;
                 }
             }
         }
 
-        static IEnumerable<object> Convert(ReadOnlySpan<byte> data)
+        private static IEnumerable<object> Convert(ReadOnlySpan<byte> data)
         {
             var list = new List<object>();
             try
@@ -152,7 +135,6 @@ namespace PolygonIo.Utils.StreamReplay
             return list;
         }
 
-        /*
         private static bool TryReadLine(ref ReadOnlySequence<byte> buffer, out ReadOnlySequence<byte> line)
         {
             // Look for a EOL in the buffer.
@@ -169,6 +151,5 @@ namespace PolygonIo.Utils.StreamReplay
             buffer = buffer.Slice(buffer.GetPosition(1, position.Value));
             return true;
         }
-        */
     }
 }
