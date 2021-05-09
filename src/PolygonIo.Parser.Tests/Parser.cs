@@ -2,6 +2,7 @@
 using System.Diagnostics;
 using System.IO;
 using System.Runtime.CompilerServices;
+using System.Threading;
 
 namespace PolygonIo.Parser.Tests
 {
@@ -228,6 +229,8 @@ namespace PolygonIo.Parser.Tests
             string line = null;
             while ((line = txt.ReadLine()) != null)
             {
+                Thread.Sleep(100);
+
                 if (!line.StartsWith("[{") || !line.EndsWith("}]"))
                 {
                     OnBadLine?.Invoke(line);
@@ -272,7 +275,7 @@ namespace PolygonIo.Parser.Tests
                     OnQuote?.Invoke(Quote.Parse(record));
                     break;
                 case 'T':
-                    OnTrade.Invoke(Trade.Parse(record));
+                    OnTrade?.Invoke(Trade.Parse(record));
                     break;
             }
         }
