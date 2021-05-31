@@ -2,11 +2,7 @@
 using System.Buffers;
 using System.Buffers.Text;
 using System.Collections.Generic;
-using System.Diagnostics;
-using System.IO;
-using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace PolygonIo.Parser.Tests
 {

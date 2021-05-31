@@ -37,9 +37,7 @@ namespace PolygonIo.WebSocket
             if (this.isUsingArrayPool)
                 return ArrayPool<byte>.Shared.Rent(this.receiveChunkSize); // Rent a buffer.
             else
-            {
                 return this.internalBufferIfArrayPoolNotUsed ??= new byte[this.receiveChunkSize];
-            }
         }
 
         private async Task Loop(IEnumerable<string> tickers, Func<ReadOnlySequence<byte>,Task> dispatch, CancellationToken cancellationToken)
@@ -134,19 +132,14 @@ namespace PolygonIo.WebSocket
 
         public void Dispose()
         {
-            // Dispose of unmanaged resources.
-            Dispose(true);
-
-            // Suppress finalization.
-            GC.SuppressFinalize(this);
+            Dispose(true); // Dispose of unmanaged resources.
+            GC.SuppressFinalize(this); // Suppress finalization.
         }
 
         protected virtual void Dispose(bool disposing)
         {
             if (disposing)
-            {
                 Stop();
-            }
         }
     }
 }

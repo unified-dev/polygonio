@@ -79,10 +79,10 @@ namespace PolygonIo.WebSocket
         {
             return subscriptionType switch
             {
-                SubscriptionType.AggregatePerSecond => StreamFieldNames.AggregatePerSecond + "." + symbol,
-                SubscriptionType.AggregatePerMinute => StreamFieldNames.AggregatePerMinute + "." + symbol,
-                SubscriptionType.Quote => StreamFieldNames.Quote + "." + symbol,
-                SubscriptionType.Trade => StreamFieldNames.Trade + "." + symbol,
+                SubscriptionType.AggregatePerSecond => MessageTypes.AggregatePerSecond + "." + symbol,
+                SubscriptionType.AggregatePerMinute => MessageTypes.AggregatePerMinute + "." + symbol,
+                SubscriptionType.Quote => MessageTypes.Quote + "." + symbol,
+                SubscriptionType.Trade => MessageTypes.Trade + "." + symbol,
                 _ => throw new ArgumentException(nameof(subscriptionType)),
             };
         }

@@ -41,10 +41,10 @@ namespace PolygonIo.WebSocket.Example
 
                 polygonWebSocket.Start(
                                     tickers,
-                                    PrintAndReturnTask,
-                                    PrintAndReturnTask,
-                                    PrintAndReturnTask,
-                                    PrintAndReturnTask);
+                                    (trade) => PrintAndReturnTask(trade),
+                                    (quote) => PrintAndReturnTask(quote),
+                                    (perSecondAggregate) => PrintAndReturnTask(perSecondAggregate),
+                                    (perMinuteAggregate) => PrintAndReturnTask(perMinuteAggregate));
 
                 Console.ReadKey();
 

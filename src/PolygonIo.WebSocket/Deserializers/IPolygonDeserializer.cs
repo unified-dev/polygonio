@@ -1,11 +1,10 @@
 ﻿using PolygonIo.WebSocket.Contracts;
 using System;
-using System.Buffers;
 
 namespace PolygonIo.WebSocket.Deserializers
 {
     public interface IPolygonDeserializer
     {
-        void Deserialize(ReadOnlySpan<byte> data, Action<IQuote> onQuote, Action<ITrade> onTrade, Action<ITimeAggregate> onPerSecondAggregate, Action<ITimeAggregate> onPerMinuteAggregate, Action<IStatus> onStatus, Action<string> onError);
+        void Deserialize(ReadOnlySpan<byte> data, Action<Quote> onQuote, Action<Trade> onTrade, Action<TimeAggregate> onPerSecondAggregate, Action<TimeAggregate> onPerMinuteAggregate, Action<Status> onStatus, Action<Exception> onError);
     }
 }

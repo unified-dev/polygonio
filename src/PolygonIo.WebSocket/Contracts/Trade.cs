@@ -1,16 +1,32 @@
-﻿using System;
+﻿using System.Collections.Generic;
+using System.Text.Json.Serialization;
 
 namespace PolygonIo.WebSocket.Contracts
 {
-    public struct Trade : ITrade
+    public struct Trade
     {
-        public int ExchangeId { get; set; }
-        public decimal Price { get; set; }
+        [JsonPropertyName("sym")]
         public string Symbol { get; set; }
-        public int Tape { get; set; }
-        public DateTimeOffset Timestamp { get; set; }
-        public TradeCondition[] TradeConditions { get; set; }
+
+        [JsonPropertyName("i")]
         public string TradeId { get; set; }
-        public decimal TradeSize { get; set; }
+
+        [JsonPropertyName("x")]
+        public uint ExchangeId { get; set; }
+
+        [JsonPropertyName("p")]
+        public float Price { get; set; }
+
+        [JsonPropertyName("s")]
+        public uint Size { get; set; }
+
+        [JsonPropertyName("t")]
+        public ulong UnixTimestamp { get; set; }
+
+        [JsonPropertyName("z")]
+        public uint Tape { get; set; }
+
+        [JsonPropertyName("c")]
+        public IEnumerable<TradeCondition> Conditions { get; set; }
     }
 }

@@ -1,60 +1,62 @@
-﻿using Microsoft.Extensions.Logging;
-using PolygonIo.WebSocket.Contracts;
-using PolygonIo.WebSocket.Factory;
-using System.Buffers;
+﻿using PolygonIo.WebSocket.Contracts;
 using System;
 using System.Text.Json;
 
 namespace PolygonIo.WebSocket.Deserializers
 {
-    public class Utf8JsonDeserializer : IPolygonDeserializer
+    sealed public class Utf8JsonDeserializer : IPolygonDeserializer
     {
-        private readonly IEventFactory eventDataTypeFactory;
+        bool GetJsonObject(ReadOnlySpan<byte> data, out ReadOnlySpan<byte> found)
+        {          
+            var start = data.IndexOf((byte)'{');
+            var end = data.IndexOf((byte)'}');
 
-        public Utf8JsonDeserializer(IEventFactory eventDataTypeFactory)
-        {
-            this.eventDataTypeFactory = eventDataTypeFactory ?? throw new System.ArgumentNullException(nameof(eventDataTypeFactory));
+            if (start == -1 || end == -1)
+            {
+                found = null;
+                return false;
+            }
+
+            found = data.Slice(start, end - start + 1);
+            return true;
         }
 
-        public void Deserialize(ReadOnlySpan<byte> data, Action<IQuote> onQuote, Action<ITrade> onTrade, Action<ITimeAggregate> onPerSecondAggregate, Action<ITimeAggregate> onPerMinuteAggregate, Action<IStatus> onStatus, Action<string> onError)
+        public void Deserialize(ReadOnlySpan<byte> data, Action<Quote> onQuote, Action<Trade> onTrade, Action<TimeAggregate> onPerSecondAggregate, Action<TimeAggregate> onPerMinuteAggregate, Action<Status> onStatus, Action<Exception> onError)
         {
-            // Important: we force the use of span, so we can access the ValueSpan property (and avoiding transcoding to string whilst looping through chunks)
-            var reader = new Utf8JsonReader(data, true, new JsonReaderState());
-
-            if (reader.SkipUpTo(JsonTokenType.StartArray) == false)
-                onError($"Skipped all data and no array found.");
-           
-            while (reader.SkipTillExpected(JsonTokenType.StartObject, JsonTokenType.EndArray))
+            while(GetJsonObject(data, out var jsonObject))
             {
                 try
                 {
-                    reader.ExpectNamedProperty(StreamFieldNames.Event);
-                    var ev = reader.ExpectString(StreamFieldNames.Event);
-
-                    if (ev[0] == StreamFieldNames.Quote)
+                    if (jsonObject.ContainsQuote())
                     {
-                        onQuote(reader.DecodeQuote(this.eventDataTypeFactory, onError));
+                        onQuote(JsonSerializer.Deserialize<Quote>(jsonObject));
                     }
-                    else if (ev[0] == StreamFieldNames.Trade)
+                    else if (jsonObject.ContainsTrade())
+                    {      
+                        onTrade(JsonSerializer.Deserialize<Trade>(jsonObject));
+                    }
+                    else if (jsonObject.ContainsAggregatePerSecond())
                     {
-                        onTrade(reader.DecodeTrade(this.eventDataTypeFactory, onError));
+                        onPerSecondAggregate(JsonSerializer.Deserialize<TimeAggregate>(jsonObject));
                     }
-                    else if (ev[0] == StreamFieldNames.AggregatePerSecond)
+                    else if (jsonObject.ContainsAggregatePerMinute())
                     {
-                        onPerSecondAggregate(reader.DecodeAggregate(this.eventDataTypeFactory, onError));
+                        onPerMinuteAggregate(JsonSerializer.Deserialize<TimeAggregate>(jsonObject));
                     }
-                    else if (ev == StreamFieldNames.AggregatePerMinute)
+                    else if (jsonObject.ContainsStatus())
                     {
-                        onPerMinuteAggregate(reader.DecodeAggregate(this.eventDataTypeFactory, onError));
+                        onStatus(JsonSerializer.Deserialize<Status>(jsonObject));
                     }
-                    else if (ev == StreamFieldNames.Status)
+                    else
                     {
-                        onStatus(reader.DecodeStatus(this.eventDataTypeFactory, onError));
+                        // Unknown event type.
                     }
+                    
+                    data = data.Slice(jsonObject.Length + 1); // Skip forward over the processed json.
                 }
-                catch (JsonException ex)
+                catch (Exception e)
                 {
-                    onError($"Decoding stream but will skip past error, encountered {ex.Message}.");
+                    onError(e);
                 }
             }
         }

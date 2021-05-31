@@ -1,7 +1,6 @@
 ﻿using Microsoft.Extensions.Logging;
 using PolygonIo.WebSocket.Contracts;
 using PolygonIo.WebSocket.Deserializers;
-using PolygonIo.WebSocket.Factory;
 using Serilog;
 using System;
 using System.Buffers;
@@ -10,7 +9,6 @@ using System.Diagnostics;
 using System.IO;
 using System.IO.Pipelines;
 using System.Linq;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -35,7 +33,7 @@ namespace PolygonIo.Utils.StreamReplay
             var loggerFactory = new LoggerFactory().AddSerilog(log);
             logger = loggerFactory.CreateLogger<Program>();
             
-            deserializer = new Utf8JsonDeserializer(new PolygonTypesEventFactory());
+            deserializer = new Utf8JsonDeserializer();
 
             var sw = new Stopwatch();
             sw.Start();
@@ -97,16 +95,16 @@ namespace PolygonIo.Utils.StreamReplay
             {
                 switch (item)
                 {
-                    case IQuote:
+                    case Quote quote:
                         countQuote++;
                         break;
-                    case ITrade:
+                    case Trade trade:
                         countTrade++;
                         break;
-                    case ITimeAggregate:
+                    case TimeAggregate timeAggregate:
                         countAggregates++;
                         break;
-                    case IStatus:
+                    case Status status:
                         countStatus++;
                         break;
                 }
@@ -124,7 +122,7 @@ namespace PolygonIo.Utils.StreamReplay
                     (aggregate) => list.Add(aggregate),
                     (aggregate) => list.Add(aggregate),
                     (status) => list.Add(status),
-                    (error) => logger.LogError(error));                
+                    (ex) => logger.LogError(ex, ex.Message));                
             }
             catch (Exception ex)
             {
