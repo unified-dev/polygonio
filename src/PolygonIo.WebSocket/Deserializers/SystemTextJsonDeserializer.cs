@@ -1,10 +1,11 @@
 ﻿using PolygonIo.WebSocket.Contracts;
 using System;
+using System.Text;
 using System.Text.Json;
 
 namespace PolygonIo.WebSocket.Deserializers
 {
-    sealed public class Utf8JsonDeserializer : IPolygonDeserializer
+    public sealed class SystemTextJsonDeserializer : IPolygonDeserializer
     {
         bool GetJsonObject(ReadOnlySpan<byte> data, out ReadOnlySpan<byte> found)
         {          
@@ -21,7 +22,7 @@ namespace PolygonIo.WebSocket.Deserializers
             return true;
         }
 
-        public void Deserialize(ReadOnlySpan<byte> data, Action<Quote> onQuote, Action<Trade> onTrade, Action<TimeAggregate> onPerSecondAggregate, Action<TimeAggregate> onPerMinuteAggregate, Action<Status> onStatus, Action<Exception> onError)
+        public void Deserialize(ReadOnlySpan<byte> data, Action<Quote> onQuote, Action<Trade> onTrade, Action<TimeAggregate> onPerSecondAggregate, Action<TimeAggregate> onPerMinuteAggregate, Action<Status> onStatus, Action<Exception> onError, Action<string> onUnknown = null)
         {
             while(GetJsonObject(data, out var jsonObject))
             {
@@ -50,6 +51,7 @@ namespace PolygonIo.WebSocket.Deserializers
                     else
                     {
                         // Unknown event type.
+                        onUnknown?.Invoke(Encoding.UTF8.GetString(jsonObject));
                     }
                     
                     data = data.Slice(jsonObject.Length + 1); // Skip forward over the processed json.

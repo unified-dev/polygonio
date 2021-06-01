@@ -27,7 +27,7 @@ namespace PolygonIo.WebSocket
         {
             this.stackAllocLength = stackAllocLength;
             this.logger = loggerFactory.CreateLogger<PolygonWebsocket>();
-            this.deserializer = new Utf8JsonDeserializer();
+            this.deserializer = new SystemTextJsonDeserializer();
             this.polygonConnection = new PolygonConnection(apiKey, apiUrl, TimeSpan.FromSeconds(reconnectTimeout), loggerFactory, true);            
         }
 

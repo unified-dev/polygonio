@@ -22,7 +22,7 @@ namespace PolygonIo.Utils.StreamReplay
         private static long countStatus = 0;
         private static long errors = 0;
         private static ILogger<Program> logger;
-        private static Utf8JsonDeserializer deserializer;
+        private static SystemTextJsonDeserializer deserializer;
 
         public static async Task Main(string[] args)
         {
@@ -33,7 +33,7 @@ namespace PolygonIo.Utils.StreamReplay
             var loggerFactory = new LoggerFactory().AddSerilog(log);
             logger = loggerFactory.CreateLogger<Program>();
             
-            deserializer = new Utf8JsonDeserializer();
+            deserializer = new SystemTextJsonDeserializer();
 
             var sw = new Stopwatch();
             sw.Start();
