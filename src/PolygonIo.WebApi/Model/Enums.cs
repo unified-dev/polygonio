@@ -6,73 +6,56 @@
 
 	public enum Sort { asc, desc }
 
-	public enum PrimaryExch
+	public enum PrimaryExchange
     {
-		LSEN,
-		OTC,
-		ARCA,
-		IEXG,
-		OTCQX,
-		GREY,
-		NULL,
-		GIDS,
-		NDD,
-		OTO,
-		OBB,
-		MDX,
-		NSD,
-		NYE,
-		CVEM,
-		CRYPTO,
-		NGS,
-		NSC,
-		SPIC,
-		NASDAQ,
-		NSX,
-		AMX,
-		FX,
-		OTCQB,
-		BATS,
-		CBO,
-		NMF,
-		MIO
-	}
+		XASE,
+		XNAS,
+		XNYS,
+		ARCX,
+        BATS
+    }
 
 	public enum TickerType
 	{
-		CS,			// "Common Stock"
-		ADR,		// "American Depository Receipt"
-		NVDR,		// "Non-Voting Depository Receipt"
-		GDR,		// "Global Depositary Receipt"
-		SDR,		// "Special Drawing Right"
-		CEF,		// "Closed-End Fund"
-		ETP,		// "Exchange Traded Product"
-		REIT,		// "Real Estate Investment Trust"
-		MLP,		// "Master Limited Partnership"
-		WRT,		// "Equity WRT"
-		PUB,		// "Public"
-		NYRS,		// "New York Registry Shares"
-		UNIT,		// "Unit"
-		RIGHT,		// "Right"
-		TRAK,		// "Tracking stock or targeted stock"
-		LTDP,		// "Limited Partnership"
-		RYLT,		// "Royalty Trust"
-		MF,			// "Mutual Fund"
-		PFD,		// "Preferred Stock"
-		FDR,		// "Foreign Ordinary Shares"
-		OST,		// "Other Security Type"
-		FUND,		// "Fund"
-		SP,			// "Structured Product"
-		SI,			// "Secondary Issue"
-		INDEX,      // "Index",
-		ETF,        // "Exchange Traded Fund (ETF)"
-		ETN,        // "Exchange Traded Note (ETN)"
-		ETMF,       // "Exchange Traded Managed Fund (ETMF)"
-		SETTLEMENT, // "Settlement"
-		SPOT,       // "Spot"
-		SUBPROD,    // "Subordinated product"
-		WC,         // "World Currency"
-		ALPHAINDEX  // "Alpha Index"
+        CS, // Common Stock
+        BOND, // Bond
+        BASKET, // Basket
+        ADRC, // American Depository Receipt Common
+        ADRP, // American Depository Receipt Preferred
+        ADRW, // American Depository Receipt Warrant
+        ADRR, // American Depository Receipt Right
+        NVDR, // Non-Voting Depository Receipt
+        GDR, // Global Depositary Receipt
+        SDR, // Special Drawing Right
+        CEF, // Closed-End Fund
+        ETP, // Exchange Traded Product/Fund
+        REIT, // Real Estate Investment Trust
+        MLP, // Master Limited Partnership
+        WRT, // Equity WRT
+        PUB, // Public
+        NYRS, // New York Registry Shares
+        UNIT, // Unit
+        RIGHT, // Right
+        TRAK, // Tracking stock or targeted stock
+        LTDP, // Limited Partnership
+        RYLT, // Royalty Trust
+        MF, // Mutual Fund
+        PFD, // Preferred Stock
+        FDR, // Foreign Ordinary Shares
+        OST, // Other Security Type
+        FUND, // Fund
+        SP, // Structured Product
+        SI, // Secondary Issue
+        WARRANT, // Warrant"
+        INDEX, // Index
+        ETF, // Exchange Traded Fund (ETF)
+        ETN, // Exchange Traded Note (ETN)
+        ETMF, // Exchange Traded Managed Fund (ETMF)
+        SETTLEMENT, // Settlement
+        SPOT, // Spot
+        SUBPROD, // Subordinated product
+        WC, // World Currency
+        ALPHAINDEX, // Alpha Index
 	}
 
 	public enum Market { Stocks, Indices, Crypto, FX, Bonds, MF, MMF }

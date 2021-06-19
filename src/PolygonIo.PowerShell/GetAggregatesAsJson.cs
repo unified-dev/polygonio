@@ -46,11 +46,9 @@ namespace PolygonIo.PowerShell
 
         protected async Task<AggregateResponse> ProcessRecordAsync()
         {
-            using (var client = new HttpClient())
-            {
-                return await client.GetPolygonAggregatesBarsV2Async(
-                    cts.Token, ApiKey, StocksTicker, Multiplier, Timespan, From, To, Unadjusted, Sort, Limit);
-            }
+            using var client = new HttpClient();
+            return await client.GetPolygonAggregatesBarsV2Async(
+                cts.Token, ApiKey, StocksTicker, Multiplier, Timespan, From, To, Unadjusted, Sort, Limit);
         }
 
         protected override void StopProcessing()

@@ -1,16 +1,15 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>netcoreapp3.1</TargetFramework>
+    <TargetFramework>net5.0</TargetFramework>
 
     <IsPackable>false</IsPackable>
 
-    <UserSecretsId>f0ce923c-da48-4f3b-a926-4dd3f48793ac</UserSecretsId>
-
-    <LangVersion>latest</LangVersion>
+    <UserSecretsId>a86d635b-43a6-4c0a-95f4-d5bb82109796</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Configuration" Version="5.0.0" />
     <PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" Version="5.0.0" />
     <PackageReference Include="NUnit" Version="3.13.2" />
     <PackageReference Include="NUnit3TestAdapter" Version="4.0.0" />
@@ -18,7 +17,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\PolygonIo.WebSocket\PolygonIo.WebSocket.csproj" />
+    <ProjectReference Include="..\PolygonIo.WebApi\PolygonIo.WebApi.csproj" />
   </ItemGroup>
 
 </Project>

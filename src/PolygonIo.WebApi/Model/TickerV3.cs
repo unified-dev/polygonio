@@ -1,4 +1,5 @@
 ﻿using System;
+using Newtonsoft.Json;
 
 namespace PolygonIo.WebApi.Model
 {
@@ -9,13 +10,18 @@ namespace PolygonIo.WebApi.Model
         public Market Market { get; set; }
         public Locale Locale { get; set; }
         public bool Active { get; set; }
-        public PrimaryExch PrimaryExch { get; set; }
-        public DateTime Updated { get; set; }
+        [JsonProperty("primary_exchange")]
+        public PrimaryExchange PrimaryExchange { get; set; }
+        [JsonProperty("currency_name")]
         public CurrencyCode CurrencyName { get; set; }
+        [JsonProperty("cik")]
         public string CIK { get; set; }
         public TickerType Type { get; set; }
+        [JsonProperty("composite_figi")]
         public string CompositeFigi { get; set; }
+        [JsonProperty("share_class_figi")]
         public string ShareClassFigi { get; set; }
+        [JsonProperty("last_updated_utc")]
         public DateTimeOffset LastUpdatedUtc { get; set; }
     }
 }

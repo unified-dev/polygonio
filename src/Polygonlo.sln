@@ -23,7 +23,11 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Examples", "Examples", "{0E
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "PolygonIo.Utils.StreamReplay", "PolygonIo.Utils.StreamReplay\PolygonIo.Utils.StreamReplay.csproj", "{A1A4DBF6-F69A-4E17-A0F4-75BE990EFF10}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PolygonIo.Parser.Tests", "PolygonIo.Parser.Tests\PolygonIo.Parser.Tests.csproj", "{4CCE7E59-7A01-46C9-AD17-A0D03B762F25}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "PolygonIo.Parser.Tests", "PolygonIo.Parser.Tests\PolygonIo.Parser.Tests.csproj", "{4CCE7E59-7A01-46C9-AD17-A0D03B762F25}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tests", "Tests", "{52800BD1-50EC-4A66-86B6-CA35F7E7B597}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PolygonIo.WebApi.Tests", "PolygonIo.WebApi.Tests\PolygonIo.WebApi.Tests.csproj", "{84567D3D-EB8E-46E2-A2D4-F4100F766791}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -63,14 +67,21 @@ Global
 		{4CCE7E59-7A01-46C9-AD17-A0D03B762F25}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{4CCE7E59-7A01-46C9-AD17-A0D03B762F25}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{4CCE7E59-7A01-46C9-AD17-A0D03B762F25}.Release|Any CPU.Build.0 = Release|Any CPU
+		{84567D3D-EB8E-46E2-A2D4-F4100F766791}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{84567D3D-EB8E-46E2-A2D4-F4100F766791}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{84567D3D-EB8E-46E2-A2D4-F4100F766791}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{84567D3D-EB8E-46E2-A2D4-F4100F766791}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
+		{A57D1357-75AA-466A-9BBB-DD86D13D2321} = {52800BD1-50EC-4A66-86B6-CA35F7E7B597}
 		{3AB1179A-9853-4E3C-99C7-E048369B3CB2} = {0E604A43-5C0C-4F5C-8C2E-57129F87172C}
 		{5EF3A52E-12CF-4FF4-9BD8-911DFC433845} = {266FB5BC-E10D-4FD6-84A1-043684A77759}
 		{A1A4DBF6-F69A-4E17-A0F4-75BE990EFF10} = {266FB5BC-E10D-4FD6-84A1-043684A77759}
+		{4CCE7E59-7A01-46C9-AD17-A0D03B762F25} = {52800BD1-50EC-4A66-86B6-CA35F7E7B597}
+		{84567D3D-EB8E-46E2-A2D4-F4100F766791} = {52800BD1-50EC-4A66-86B6-CA35F7E7B597}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {DCC673E4-13FE-4CA2-BEFB-66CD49770CFB}
