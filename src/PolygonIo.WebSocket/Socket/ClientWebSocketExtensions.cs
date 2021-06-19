@@ -41,7 +41,7 @@ namespace PolygonIo.WebSocket
             await Subscribe(websocket, symbols, SubscriptionType.Quote, cancellationToken);
         }
 
-        static private async Task Subscribe(this ClientWebSocket websocket, IEnumerable<string> symbols, SubscriptionType subscriptionType, CancellationToken cancellationToken)
+        private static async Task Subscribe(this ClientWebSocket websocket, IEnumerable<string> symbols, SubscriptionType subscriptionType, CancellationToken cancellationToken)
         {          
             var chunks = symbols
                             .Select((s, i) => new { Value = s, Index = i })
