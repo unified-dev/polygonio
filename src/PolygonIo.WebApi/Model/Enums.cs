@@ -2,7 +2,7 @@
 {
 	public enum Timespan { Minute, Hour, Day, Week, Month, Quarter, Year }
 
-	public enum SortTickersBy { Ticker, Name, Market, Locale, Currency, Active, PrimarExch, Type }
+	public enum SortTickersBy { Ticker, Name, Market, Locale, Currency, Active, PrimarExchange, Type }
 
 	public enum Sort { asc, desc }
 
