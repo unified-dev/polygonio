@@ -19,6 +19,8 @@ namespace PolygonIo.WebApi.Contracts
         [JsonProperty("t")]
         [JsonConverter(typeof(UnixMillisecondsConverter))]
         public DateTimeOffset Timestamp { get; set; }
+        [JsonProperty("vw")]
+        public decimal VolumeWeightedAveragePrice { get; set; }
         [JsonProperty("n")]
         public int Samples { get; set; }
     }
