@@ -4,7 +4,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
 using NUnit.Framework;
-using PolygonIo.WebApi.Model;
+using PolygonIo.WebApi.Contracts;
 
 namespace PolygonIo.WebApi.Tests
 {

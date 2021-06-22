@@ -1,12 +1,12 @@
 ﻿using Newtonsoft.Json;
 using Nito.AsyncEx.Synchronous;
 using PolygonIo.WebApi;
-using PolygonIo.WebApi.Model;
 using System;
 using System.Management.Automation;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
+using PolygonIo.WebApi.Contracts;
 
 namespace PolygonIo.PowerShell
 {

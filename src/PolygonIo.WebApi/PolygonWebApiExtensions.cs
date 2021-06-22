@@ -1,11 +1,11 @@
 ﻿using Flurl;
 using Newtonsoft.Json;
-using PolygonIo.WebApi.Model;
 using System;
 using System.Collections.Generic;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
+using PolygonIo.WebApi.Contracts;
 
 namespace PolygonIo.WebApi
 {

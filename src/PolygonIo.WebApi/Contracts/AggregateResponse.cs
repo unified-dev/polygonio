@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 
-namespace PolygonIo.WebApi.Model
+namespace PolygonIo.WebApi.Contracts
 {
     public class AggregateResponse
     {

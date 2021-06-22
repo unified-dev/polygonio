@@ -1,6 +1,6 @@
 ﻿using Newtonsoft.Json;
 
-namespace PolygonIo.WebApi.Model
+namespace PolygonIo.WebApi.Contracts
 {
     public class GroupedDailyBars : AggV2
     {

@@ -1,4 +1,4 @@
-﻿namespace PolygonIo.WebApi.Model
+﻿namespace PolygonIo.WebApi.Contracts
 {
 	public enum Timespan { Minute, Hour, Day, Week, Month, Quarter, Year }
 
