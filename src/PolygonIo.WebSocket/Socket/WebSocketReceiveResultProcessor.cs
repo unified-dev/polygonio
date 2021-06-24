@@ -9,12 +9,6 @@ namespace PolygonIo.WebSocket.Socket
     {
         Chunk<byte> startChunk = null;
         Chunk<byte> currentChunk = null;
-        private readonly bool isUsingArrayPool;
-
-        public WebSocketReceiveResultProcessor(bool isUsingArrayPool)
-        {
-            this.isUsingArrayPool = isUsingArrayPool;
-        }
 
         public bool Receive(WebSocketReceiveResult result, ArraySegment<byte> buffer, out ReadOnlySequence<byte> frame)
         {
@@ -24,8 +18,7 @@ namespace PolygonIo.WebSocket.Socket
                 return false;
             }
 
-            // If not using array pool, take a local copy to avoid corruption as buffer is reused by caller.
-            var slice = isUsingArrayPool ? buffer.Slice(0, result.Count) : buffer.Slice(0, result.Count).ToArray();
+            var slice = buffer.Slice(0, result.Count);
 
             if (startChunk == null)
                 startChunk = currentChunk = new Chunk<byte>(slice);
@@ -34,9 +27,8 @@ namespace PolygonIo.WebSocket.Socket
 
             if (result.EndOfMessage && startChunk != null)
             {
-
-                frame = startChunk.Next == null
-                    ? new ReadOnlySequence<byte>(startChunk.Memory) : new ReadOnlySequence<byte>(startChunk, 0, currentChunk, currentChunk.Memory.Length);
+                frame = startChunk.Next == null ?
+                    new ReadOnlySequence<byte>(startChunk.Memory) : new ReadOnlySequence<byte>(startChunk, 0, currentChunk, currentChunk.Memory.Length);
 
                 startChunk = currentChunk = null; // Reset so we can accept new chunks from scratch.
                 return true;
@@ -50,17 +42,15 @@ namespace PolygonIo.WebSocket.Socket
 
         public void Dispose()
         {
-            if (this.isUsingArrayPool)
+            // Release any partial decoded chunks.
+            var chunk = startChunk;
+
+            while (chunk != null)
             {
-                var chunk = startChunk;
+                if (MemoryMarshal.TryGetArray(chunk.Memory, out var segment))
+                    ArrayPool<byte>.Shared.Return(segment.Array);
 
-                while (chunk != null)
-                {
-                    if (MemoryMarshal.TryGetArray(chunk.Memory, out var segment))
-                        ArrayPool<byte>.Shared.Return(segment.Array);
-
-                    chunk = (Chunk<byte>)chunk.Next;
-                }
+                chunk = (Chunk<byte>)chunk.Next;
             }
 
             // Suppress finalization.

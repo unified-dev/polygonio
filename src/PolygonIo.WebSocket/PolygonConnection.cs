@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net.WebSockets;
 using System.Buffers;
+using System.Runtime.InteropServices;
 using PolygonIo.WebSocket.Socket;
 
 namespace PolygonIo.WebSocket
@@ -13,35 +14,38 @@ namespace PolygonIo.WebSocket
     public class PolygonConnection : IDisposable
     {
         private readonly int receiveChunkSize;
-        private byte[] internalBufferIfArrayPoolNotUsed;
         private readonly ILogger<PolygonConnection> logger;
         private readonly TimeSpan keepAliveInterval;
-        private readonly bool isUsingArrayPool;
         private readonly Uri uri;
         private readonly string apiKey;
 
         private Task loopTask;
         private CancellationTokenSource cts = null;
 
-        public PolygonConnection(string apiKey, string apiUrl, TimeSpan keepAliveInterval, ILoggerFactory loggerFactory, bool isUsingArrayPool = false, int receiveChunkSize = 4096)
+        public PolygonConnection(string apiKey, string apiUrl, TimeSpan keepAliveInterval, ILoggerFactory loggerFactory, int receiveChunkSize = 4096)
         {
             this.uri = string.IsNullOrEmpty(apiUrl) ? throw new ArgumentException($"'{nameof(apiUrl)}' cannot be null or empty.", nameof(apiUrl)) : new Uri(apiUrl);
             this.apiKey = apiKey ?? throw new ArgumentNullException(nameof(apiKey));
             this.receiveChunkSize = receiveChunkSize;
             this.keepAliveInterval = keepAliveInterval;
-            this.isUsingArrayPool = isUsingArrayPool;
             this.logger = loggerFactory.CreateLogger<PolygonConnection>();
         }
 
-        private ArraySegment<byte> GetBuffer()
+        private ArraySegment<byte> RentBuffer()
         {
-            if (this.isUsingArrayPool)
-                return ArrayPool<byte>.Shared.Rent(this.receiveChunkSize); // Rent a buffer.
-            else
-                return this.internalBufferIfArrayPoolNotUsed ??= new byte[this.receiveChunkSize];
+            return ArrayPool<byte>.Shared.Rent(this.receiveChunkSize); // Rent a buffer.
         }
 
-        private async Task Loop(IEnumerable<string> tickers, Func<ReadOnlySequence<byte>,Task> dispatch, CancellationToken cancellationToken)
+        private void ReturnRentedBuffer(ReadOnlySequence<byte> data)
+        {
+            foreach (var chunk in data)
+            {
+                if (MemoryMarshal.TryGetArray(chunk, out var segment))
+                    ArrayPool<byte>.Shared.Return(segment.Array);
+            }
+        }
+
+        private async Task Loop(IEnumerable<string> tickers, Func<ReadOnlySequence<byte>, Action, Task> dispatch, CancellationToken cancellationToken)
         {           
             this.logger.LogInformation($"Entering {nameof(PolygonConnection.Loop)}.");
 
@@ -49,7 +53,7 @@ namespace PolygonIo.WebSocket
             {
                 var webSocket = new ClientWebSocket();
                 webSocket.Options.KeepAliveInterval = this.keepAliveInterval;
-                var resultProcessor = new WebSocketReceiveResultProcessor(this.isUsingArrayPool);
+                var resultProcessor = new WebSocketReceiveResultProcessor();
 
                 try
                 {
@@ -67,16 +71,16 @@ namespace PolygonIo.WebSocket
 
                     while (webSocket.State == WebSocketState.Open && cancellationToken.IsCancellationRequested == false)
                     {
-                        var buffer = GetBuffer();
+                        var buffer = RentBuffer();
                         var result = await webSocket.ReceiveAsync(buffer, cancellationToken);
-                        var isEndOfMessage = resultProcessor.Receive(result, buffer, out var frame);
 
-                        if (isEndOfMessage)
+                        if (resultProcessor.Receive(result, buffer, out var frame))
                         {
                             if (frame.IsEmpty == true)
                                 break; // End of message with no data means socket closed - break so we can reconnect.
-                            else
-                                await dispatch(frame);
+                            
+                            // Send the frame, and delegate consumer should call to release the buffer once done.
+                            await dispatch(frame, () => ReturnRentedBuffer(frame));
                         }
                     }
                 }
@@ -97,7 +101,7 @@ namespace PolygonIo.WebSocket
             }
         }
 
-        public void Start(IEnumerable<string> tickers, Func<ReadOnlySequence<byte>, Task> dispatch)
+        public void Start(IEnumerable<string> tickers, Func<ReadOnlySequence<byte>, Action, Task> dispatch)
         {
             if (dispatch is null)
                 throw new ArgumentNullException(nameof(dispatch));

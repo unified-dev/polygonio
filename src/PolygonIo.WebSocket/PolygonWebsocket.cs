@@ -4,7 +4,6 @@ using System.Text;
 using System.Collections.Generic;
 using System.Threading.Tasks.Dataflow;
 using System.Buffers;
-using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using PolygonIo.WebSocket.Contracts;
 using PolygonIo.WebSocket.Serializers;
@@ -27,7 +26,7 @@ namespace PolygonIo.WebSocket
         {
             this.logger = loggerFactory.CreateLogger<PolygonWebsocket>();
             this.deserializer = deserializer;
-            this.polygonConnection = new PolygonConnection(apiKey, apiUrl, TimeSpan.FromSeconds(reconnectTimeout), loggerFactory, true);            
+            this.polygonConnection = new PolygonConnection(apiKey, apiUrl, TimeSpan.FromSeconds(reconnectTimeout), loggerFactory);            
         }
 
         private IEnumerable<object> Decode(ReadOnlySequence<byte> data)
@@ -55,20 +54,10 @@ namespace PolygonIo.WebSocket
             return list;
         }
 
-        private void ReturnRentedBuffer(ReadOnlySequence<byte> data)
-        {
-            // We are using PolygonConnection with constructor parameter `isUsingArrayPool = true` as created in our constructor.
-            // The data passed to us is from allocated buffers from the shared pool - so here we must return buffers of the sequence.
-            foreach (var chunk in data)
-            {
-                if (MemoryMarshal.TryGetArray(chunk, out var segment))
-                    ArrayPool<byte>.Shared.Return(segment.Array);
-            }
-        }
-
+        // If onTraceRawFrameAsync is set the buffer MUST be released via the Action delegate that is passed to the callback.
         public void Start(IEnumerable<string> tickers, Func<Trade, Task> onTradeAsync, Func<Quote, Task> onQuoteAsync,
             Func<TimeAggregate, Task> onAggregateAsync, Func<StatusMessage, Task> onStatusAsync,
-            Func<ReadOnlySequence<byte>, Task> onTraceRawFrameAsync = null)
+            Func<ReadOnlySequence<byte>, Action, Task> onTraceRawFrameAsync = null)
         {
             if (this.isRunning)
                 return;
@@ -89,15 +78,21 @@ namespace PolygonIo.WebSocket
                 }
             }, new ExecutionDataflowBlockOptions { MaxDegreeOfParallelism = 1, BoundedCapacity = 1 });
 
-            this.polygonConnection.Start(tickers, async (data) =>
+            this.polygonConnection.Start(tickers, async (data, releaseBuffer) =>
             {
-                if (onTraceRawFrameAsync != null)
-                    await onTraceRawFrameAsync(data);
-
                 var decodedData = Decode(data);
-                ReturnRentedBuffer(data);
                 await this.dispatchBlock.SendAsync(decodedData);
+
+                if (onTraceRawFrameAsync != null)
+                    await onTraceRawFrameAsync(data, releaseBuffer);
+                else
+                    releaseBuffer();
             });
+        }
+
+        private Task Dispatch(ReadOnlySequence<byte> arg1, Action arg2)
+        {
+            throw new NotImplementedException();
         }
 
         public void Stop()

@@ -44,11 +44,12 @@ namespace PolygonIo.Utils.StreamRecorder
 
             using var polygonConnection = new PolygonConnection(apiKey, "wss://socket.polygon.io/stocks", TimeSpan.FromSeconds(15), loggerFactory);
 
-            polygonConnection.Start(args.Select(x => x.ToUpper()), (data) =>
+            polygonConnection.Start(args.Select(x => x.ToUpper()), (data, releaseBuffer) =>
             {
                 count = count + data.Length;
                 binaryWriter.Write(data.ToArray());
                 binaryWriter.Write((byte)'\n'); // delimit frames with new line
+                releaseBuffer();
 
                 var span = (DateTime.UtcNow - lastUpdate);
 
