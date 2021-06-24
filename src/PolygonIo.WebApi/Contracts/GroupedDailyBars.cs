@@ -1,4 +1,6 @@
-﻿using Newtonsoft.Json;
+﻿
+using Newtonsoft.Json;
+using PolygonIo.WebApi.Contracts;
 
 namespace PolygonIo.WebApi.Contracts
 {

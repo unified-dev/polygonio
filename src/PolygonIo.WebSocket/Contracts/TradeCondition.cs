@@ -1,4 +1,5 @@
-﻿namespace PolygonIo.WebSocket.Contracts
+﻿
+namespace PolygonIo.WebSocket.Contracts
 {
     // as per https://polygon.io/glossary/us/stocks/conditions-indicators
     public enum TradeCondition

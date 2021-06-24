@@ -7,7 +7,6 @@ namespace PolygonIo.WebApi.Contracts
     {
         [JsonProperty("request_id")]
         public string RequestId { get; set; }
-
         [JsonProperty("next_url")]
         public string NextUrl { get; set; }
         public int Count { get; set; }

@@ -1,12 +1,13 @@
-﻿namespace PolygonIo.WebSocket.Contracts
+﻿
+namespace PolygonIo.WebSocket.Contracts
 {
-    internal static class MessageTypes
+    public static class MessageTypes
     {
         public const string Event = "ev";
         public const string AggregatePerMinute = "AM";
         public const char AggregatePerSecond = 'A';
         public const char Quote = 'Q';
         public const char Trade = 'T';
-        public const string Status = "status";        
+        public const string Status = "status";
     }
 }

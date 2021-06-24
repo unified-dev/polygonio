@@ -1,6 +1,5 @@
 ﻿using Microsoft.Extensions.Logging;
 using PolygonIo.WebSocket.Contracts;
-using PolygonIo.WebSocket.Deserializers;
 using Serilog;
 using System;
 using System.Buffers;
@@ -11,6 +10,7 @@ using System.IO.Pipelines;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using PolygonIo.WebSocket.Serializers;
 
 namespace PolygonIo.Utils.StreamReplay
 {
@@ -104,7 +104,7 @@ namespace PolygonIo.Utils.StreamReplay
                     case TimeAggregate timeAggregate:
                         countAggregates++;
                         break;
-                    case Status status:
+                    case StatusMessage status:
                         countStatus++;
                         break;
                 }

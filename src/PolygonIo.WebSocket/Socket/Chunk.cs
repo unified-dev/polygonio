@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Buffers;
 
-namespace PolygonIo.WebSocket
+namespace PolygonIo.WebSocket.Socket
 {
     class Chunk<T> : ReadOnlySequenceSegment<T>
     {

@@ -3,7 +3,7 @@ using System.Buffers;
 using System.Net.WebSockets;
 using System.Runtime.InteropServices;
 
-namespace PolygonIo.WebSocket
+namespace PolygonIo.WebSocket.Socket
 {
     sealed class WebSocketReceiveResultProcessor : IDisposable
     {

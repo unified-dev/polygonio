@@ -27,7 +27,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "PolygonIo.Parser.Tests", "P
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tests", "Tests", "{52800BD1-50EC-4A66-86B6-CA35F7E7B597}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PolygonIo.WebApi.Tests", "PolygonIo.WebApi.Tests\PolygonIo.WebApi.Tests.csproj", "{84567D3D-EB8E-46E2-A2D4-F4100F766791}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "PolygonIo.WebApi.Tests", "PolygonIo.WebApi.Tests\PolygonIo.WebApi.Tests.csproj", "{84567D3D-EB8E-46E2-A2D4-F4100F766791}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

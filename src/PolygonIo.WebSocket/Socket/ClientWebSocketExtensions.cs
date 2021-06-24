@@ -1,13 +1,13 @@
 ﻿using System;
-using System.Text;
-using System.Threading;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.WebSockets;
+using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using PolygonIo.WebSocket.Contracts;
-using System.Net.WebSockets;
 
-namespace PolygonIo.WebSocket
+namespace PolygonIo.WebSocket.Socket
 {
     internal static class ClientWebSocketExtensions
     {

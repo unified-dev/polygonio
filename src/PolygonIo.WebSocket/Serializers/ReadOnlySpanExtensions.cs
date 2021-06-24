@@ -1,8 +1,8 @@
-﻿using PolygonIo.WebSocket.Contracts;
-using System;
+﻿using System;
 using System.Text;
+using PolygonIo.WebSocket.Contracts;
 
-namespace PolygonIo.WebSocket.Deserializers
+namespace PolygonIo.WebSocket.Serializers
 {
     internal static class ReadOnlySpanExtensions
     {

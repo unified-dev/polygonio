@@ -1,50 +1,40 @@
 ﻿using Microsoft.Extensions.Logging;
 using System;
 using System.Text;
-using System.Threading;
 using System.Collections.Generic;
-using PolygonIo.WebSocket.Deserializers;
 using System.Threading.Tasks.Dataflow;
 using System.Buffers;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
-using System.Linq;
 using PolygonIo.WebSocket.Contracts;
+using PolygonIo.WebSocket.Serializers;
 
 namespace PolygonIo.WebSocket
 {
     public class PolygonWebsocket : IDisposable
     {
-        private readonly int stackAllocLength;
         private readonly ILogger<PolygonWebsocket> logger;
         private readonly IPolygonDeserializer deserializer;
-        private int isRunning;
+        private bool isRunning;
         private ActionBlock<IEnumerable<object>> dispatchBlock;
         private readonly PolygonConnection polygonConnection;
 
+        public PolygonWebsocket(string apiKey, string apiUrl, int reconnectTimeout, ILoggerFactory loggerFactory)
+            : this(apiKey, apiUrl, reconnectTimeout, new SystemTextJsonDeserializer(), loggerFactory)
+        { }
 
-        public PolygonWebsocket(string apiKey, string apiUrl, int reconnectTimeout, ILoggerFactory loggerFactory, int stackAllocLength = 32768)
+        public PolygonWebsocket(string apiKey, string apiUrl, int reconnectTimeout, IPolygonDeserializer deserializer, ILoggerFactory loggerFactory)
         {
-            this.stackAllocLength = stackAllocLength;
             this.logger = loggerFactory.CreateLogger<PolygonWebsocket>();
-            this.deserializer = new SystemTextJsonDeserializer();
+            this.deserializer = deserializer;
             this.polygonConnection = new PolygonConnection(apiKey, apiUrl, TimeSpan.FromSeconds(reconnectTimeout), loggerFactory, true);            
         }
 
-        unsafe IEnumerable<object> Decode(ReadOnlySequence<byte> data)
+        private IEnumerable<object> Decode(ReadOnlySequence<byte> data)
         {
-            Span<byte> localBuffer = data.Length < this.stackAllocLength ? stackalloc byte[(int)data.Length] : new byte[(int)data.Length];
-            data.CopyTo(localBuffer); //  This will do a multi-segment copy of the sequence for us via dotnet framework.
-
-            // We are using PolygonConnection with constructor parameter `isUsingArrayPool = true` as created in our constructor.
-            // The data passed to us is from allocated buffers from the shared pool - so here we must return buffers of the sequence.
-            foreach (var chunk in data)
-            {
-                 if (MemoryMarshal.TryGetArray(chunk, out var segment))
-                     ArrayPool<byte>.Shared.Return(segment.Array);
-            }
-           
             var list = new List<object>();
+            Span<byte> localBuffer = new byte[(int)data.Length];
+            data.CopyTo(localBuffer); //  This will do a multi-segment copy of the sequence for us via dotnet framework.
 
             try
             {
@@ -61,69 +51,75 @@ namespace PolygonIo.WebSocket
                 this.logger.LogError(ex, $"Error deserializing '{Encoding.UTF8.GetString(localBuffer.ToArray())}' ({ex.Message}).");
             }
 
-            // Return data.
-            return list.AsEnumerable();
+            // Return data as a list so we can dispatch to queue with one method call, as opposed to individual dispatches.
+            return list;
         }
 
-        ActionBlock<IEnumerable<object>> NewDispatchBlock(Func<Trade, Task> onTrade, Func<Quote, Task> onQuote, Func<TimeAggregate, Task> onAggregate, Func<Status, Task> onStatus)
+        private void ReturnRentedBuffer(ReadOnlySequence<byte> data)
         {
-            return new ActionBlock<IEnumerable<object>>(async (items) =>
+            // We are using PolygonConnection with constructor parameter `isUsingArrayPool = true` as created in our constructor.
+            // The data passed to us is from allocated buffers from the shared pool - so here we must return buffers of the sequence.
+            foreach (var chunk in data)
+            {
+                if (MemoryMarshal.TryGetArray(chunk, out var segment))
+                    ArrayPool<byte>.Shared.Return(segment.Array);
+            }
+        }
+
+        public void Start(IEnumerable<string> tickers, Func<Trade, Task> onTradeAsync, Func<Quote, Task> onQuoteAsync,
+            Func<TimeAggregate, Task> onAggregateAsync, Func<StatusMessage, Task> onStatusAsync,
+            Func<ReadOnlySequence<byte>, Task> onTraceRawFrameAsync = null)
+        {
+            if (this.isRunning)
+                return;
+            this.isRunning = true;
+
+            this.dispatchBlock = new ActionBlock<IEnumerable<object>>(async (items) =>
             {
                 foreach (var item in items)
                 {
                     if (item is Quote quote)
-                        await onQuote(quote);
+                        await onQuoteAsync(quote);
                     else if (item is Trade trade)
-                        await onTrade(trade);
+                        await onTradeAsync(trade);
                     else if (item is TimeAggregate aggregate)
-                        await onAggregate(aggregate);
-                    else if (item is Status status)
-                        await onStatus(status);
+                        await onAggregateAsync(aggregate);
+                    else if (item is StatusMessage status)
+                        await onStatusAsync(status);
                 }
-            },
-            new ExecutionDataflowBlockOptions { MaxDegreeOfParallelism = 1, BoundedCapacity = 1 });
-        }
+            }, new ExecutionDataflowBlockOptions { MaxDegreeOfParallelism = 1, BoundedCapacity = 1 });
 
-        public void Start(IEnumerable<string> tickers, Func<Trade, Task> onTrade, Func<Quote, Task> onQuote, Func<TimeAggregate, Task> onAggregate, Func<Status, Task> onStatus)
-        {
-            if (Interlocked.CompareExchange(ref this.isRunning, 1, 0) == 1)
-            {
-                this.logger.LogDebug($"{nameof(PolygonWebsocket)} is already running.");
-                return;
-            }
-
-            this.dispatchBlock = NewDispatchBlock(onTrade, onQuote, onAggregate, onStatus);
             this.polygonConnection.Start(tickers, async (data) =>
             {
-                var decoded = Decode(data);
-                await this.dispatchBlock.SendAsync(decoded);
+                if (onTraceRawFrameAsync != null)
+                    await onTraceRawFrameAsync(data);
+
+                var decodedData = Decode(data);
+                ReturnRentedBuffer(data);
+                await this.dispatchBlock.SendAsync(decodedData);
             });
         }
 
         public void Stop()
         {
-            if (Interlocked.CompareExchange(ref this.isRunning, 0, 1) == 0)
-            {
-                this.logger.LogDebug($"{nameof(PolygonWebsocket)} is not running.");
+            if(this.isRunning == false)
                 return;
-            }
-            
+
             this.polygonConnection.Stop();            
             this.dispatchBlock.Complete();
             this.dispatchBlock.Completion.Wait();
+            this.isRunning = false;
         }
 
         public async Task StopAsync()
         {
-            if (Interlocked.CompareExchange(ref this.isRunning, 0, 1) == 0)
-            {
-                this.logger.LogDebug($"{nameof(PolygonWebsocket)} is not running.");
+            if (this.isRunning == false)
                 return;
-            }
 
             await this.polygonConnection.StopAsync();
             this.dispatchBlock.Complete();
             await this.dispatchBlock.Completion;
+            this.isRunning = false;
         }
 
         public void Dispose()

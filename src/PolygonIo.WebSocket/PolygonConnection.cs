@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net.WebSockets;
 using System.Buffers;
+using PolygonIo.WebSocket.Socket;
 
 namespace PolygonIo.WebSocket
 {
