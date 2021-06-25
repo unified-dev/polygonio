@@ -63,7 +63,7 @@ namespace PolygonIo.WebApi
             list.AddRange(response.Results);
 
             // Get additional pages.
-            while (response.NextUrl != null)
+            while (response.NextUrl != null && cancellationToken.IsCancellationRequested == false)
             {
                 response = await GetResponse<TickersV3Response>(client, apiKey, response.NextUrl, cancellationToken);
 

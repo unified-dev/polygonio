@@ -60,10 +60,10 @@ namespace PolygonIo.WebSocket
                 {
                     this.logger.LogInformation($"Connecting.");
                     await webSocket.ConnectAsync(uri, cancellationToken);
-                    
+
                     this.logger.LogInformation($"Authenticating.");
                     await webSocket.SendAuthentication(this.apiKey, cancellationToken);
-                    
+
                     this.logger.LogInformation($"Subscribing to {tickers.Count()} symbols.");
                     await webSocket.SubscribeToAggregatePerSecond(tickers, cancellationToken);
                     await webSocket.SubscribeToAggregatePerMinute(tickers, cancellationToken);
@@ -79,7 +79,7 @@ namespace PolygonIo.WebSocket
                         {
                             if (frame.IsEmpty == true)
                                 break; // End of message with no data means socket closed - break so we can reconnect.
-                            
+
                             // Send the frame, and delegate consumer should call to release the buffer once done.
                             await dispatch(frame, Disposable.Create(() => ReturnRentedBuffer(frame)));
                         }
@@ -88,6 +88,10 @@ namespace PolygonIo.WebSocket
                 catch (WebSocketException ex)
                 {
                     this.logger.LogError(ex, ex.Message);
+                }
+                catch (TaskCanceledException ex)
+                {
+                    this.logger.LogInformation("TaskCanceled shutting down.");
                 }
                 catch (Exception ex)
                 {
