@@ -26,14 +26,27 @@ namespace PolygonIo.WebSocket
         {
             this.logger = loggerFactory.CreateLogger<PolygonWebsocket>();
             this.deserializer = deserializer;
-            this.polygonConnection = new PolygonConnection(apiKey, apiUrl, TimeSpan.FromSeconds(reconnectTimeout), loggerFactory);            
+
+            // Use 16kB buffers to minimize copying
+            this.polygonConnection = new PolygonConnection(apiKey, apiUrl, TimeSpan.FromSeconds(reconnectTimeout), loggerFactory, 16384);            
+        }
+
+        private ReadOnlySpan<byte> GetBuffer(ReadOnlySequence<byte> data)
+        {
+            // Optimized case, entire frame in the supplied sequence.
+            if (data.IsSingleSegment)
+                return data.FirstSpan;
+
+            //  This will do a multi-segment copy of the sequence for us via dotnet framework.
+            var localBuffer = new byte[(int)data.Length];
+            data.CopyTo(localBuffer);
+            return localBuffer;
         }
 
         private IEnumerable<object> Decode(ReadOnlySequence<byte> data)
         {
             var list = new List<object>();
-            Span<byte> localBuffer = new byte[(int)data.Length];
-            data.CopyTo(localBuffer); //  This will do a multi-segment copy of the sequence for us via dotnet framework.
+            var localBuffer = GetBuffer(data);
 
             try
             {
@@ -47,7 +60,7 @@ namespace PolygonIo.WebSocket
             }
             catch(Exception ex)
             {
-                this.logger.LogError(ex, $"Error deserializing '{Encoding.UTF8.GetString(localBuffer.ToArray())}' ({ex.Message}).");
+                this.logger.LogError(ex, $"Error deserializing '{Encoding.UTF8.GetString(localBuffer)}' ({ex.Message}).");
             }
 
             // Return data as a list so we can dispatch to queue with one method call, as opposed to individual dispatches.
