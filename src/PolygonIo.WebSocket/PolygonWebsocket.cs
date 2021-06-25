@@ -77,7 +77,7 @@ namespace PolygonIo.WebSocket
         // If onTraceRawFrameAsync is set the buffer MUST be released via the dispose delegate that is passed to the callback.
         public void StartWithFrameTrace(IEnumerable<string> tickers, Func<Trade, Task> onTradeAsync, Func<Quote, Task> onQuoteAsync,
             Func<TimeAggregate, Task> onAggregateAsync, Func<StatusMessage, Task> onStatusAsync,
-            Func<ReadOnlySequence<byte>, IDisposable, Task> onFrameAsync)
+            Func<byte[], Task> onFrameAsync)
         {
             if (onFrameAsync == null) throw new ArgumentNullException(nameof(onFrameAsync));
             StartCore(tickers, onTradeAsync, onQuoteAsync, onAggregateAsync, onStatusAsync, onFrameAsync);
@@ -85,7 +85,7 @@ namespace PolygonIo.WebSocket
 
         private void StartCore(IEnumerable<string> tickers, Func<Trade, Task> onTradeAsync, Func<Quote, Task> onQuoteAsync,
             Func<TimeAggregate, Task> onAggregateAsync, Func<StatusMessage, Task> onStatusAsync,
-            Func<ReadOnlySequence<byte>, IDisposable, Task> onTraceRawFrameAsync)
+            Func<byte[], Task> onTraceRawFrameAsync)
         {
             if (this.isRunning)
                 return;
@@ -111,10 +111,11 @@ namespace PolygonIo.WebSocket
                 var decodedData = Decode(data);
                 await this.dispatchBlock.SendAsync(decodedData);
 
+                // Copy and send if caller has set the raw frame callback.
                 if (onTraceRawFrameAsync != null)
-                    await onTraceRawFrameAsync(data, releaseBuffer);
-                else
-                    releaseBuffer.Dispose();
+                    await onTraceRawFrameAsync(data.ToArray());
+
+                releaseBuffer.Dispose();
             });
         }
 
