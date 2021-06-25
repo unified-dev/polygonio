@@ -7,6 +7,7 @@ using System.Linq;
 using System.Net.WebSockets;
 using System.Buffers;
 using System.Runtime.InteropServices;
+using Nito.Disposables;
 using PolygonIo.WebSocket.Socket;
 
 namespace PolygonIo.WebSocket
@@ -45,7 +46,7 @@ namespace PolygonIo.WebSocket
             }
         }
 
-        private async Task Loop(IEnumerable<string> tickers, Func<ReadOnlySequence<byte>, Action, Task> dispatch, CancellationToken cancellationToken)
+        private async Task Loop(IEnumerable<string> tickers, Func<ReadOnlySequence<byte>, IDisposable, Task> dispatch, CancellationToken cancellationToken)
         {           
             this.logger.LogInformation($"Entering {nameof(PolygonConnection.Loop)}.");
 
@@ -80,7 +81,7 @@ namespace PolygonIo.WebSocket
                                 break; // End of message with no data means socket closed - break so we can reconnect.
                             
                             // Send the frame, and delegate consumer should call to release the buffer once done.
-                            await dispatch(frame, () => ReturnRentedBuffer(frame));
+                            await dispatch(frame, Disposable.Create(() => ReturnRentedBuffer(frame)));
                         }
                     }
                 }
@@ -101,7 +102,7 @@ namespace PolygonIo.WebSocket
             }
         }
 
-        public void Start(IEnumerable<string> tickers, Func<ReadOnlySequence<byte>, Action, Task> dispatch)
+        public void Start(IEnumerable<string> tickers, Func<ReadOnlySequence<byte>, IDisposable, Task> dispatch)
         {
             if (dispatch is null)
                 throw new ArgumentNullException(nameof(dispatch));

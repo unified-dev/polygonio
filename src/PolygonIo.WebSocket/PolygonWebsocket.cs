@@ -54,10 +54,25 @@ namespace PolygonIo.WebSocket
             return list;
         }
 
-        // If onTraceRawFrameAsync is set the buffer MUST be released via the Action delegate that is passed to the callback.
+        
         public void Start(IEnumerable<string> tickers, Func<Trade, Task> onTradeAsync, Func<Quote, Task> onQuoteAsync,
+            Func<TimeAggregate, Task> onAggregateAsync, Func<StatusMessage, Task> onStatusAsync)
+        {
+            StartCore(tickers, onTradeAsync, onQuoteAsync, onAggregateAsync, onStatusAsync, null);
+        }
+
+        // If onTraceRawFrameAsync is set the buffer MUST be released via the dispose delegate that is passed to the callback.
+        public void StartWithFrameTrace(IEnumerable<string> tickers, Func<Trade, Task> onTradeAsync, Func<Quote, Task> onQuoteAsync,
             Func<TimeAggregate, Task> onAggregateAsync, Func<StatusMessage, Task> onStatusAsync,
-            Func<ReadOnlySequence<byte>, Action, Task> onTraceRawFrameAsync = null)
+            Func<ReadOnlySequence<byte>, IDisposable, Task> onFrameAsync)
+        {
+            if (onFrameAsync == null) throw new ArgumentNullException(nameof(onFrameAsync));
+            StartCore(tickers, onTradeAsync, onQuoteAsync, onAggregateAsync, onStatusAsync, onFrameAsync);
+        }
+
+        private void StartCore(IEnumerable<string> tickers, Func<Trade, Task> onTradeAsync, Func<Quote, Task> onQuoteAsync,
+            Func<TimeAggregate, Task> onAggregateAsync, Func<StatusMessage, Task> onStatusAsync,
+            Func<ReadOnlySequence<byte>, IDisposable, Task> onTraceRawFrameAsync)
         {
             if (this.isRunning)
                 return;
@@ -86,13 +101,8 @@ namespace PolygonIo.WebSocket
                 if (onTraceRawFrameAsync != null)
                     await onTraceRawFrameAsync(data, releaseBuffer);
                 else
-                    releaseBuffer();
+                    releaseBuffer.Dispose();
             });
-        }
-
-        private Task Dispatch(ReadOnlySequence<byte> arg1, Action arg2)
-        {
-            throw new NotImplementedException();
         }
 
         public void Stop()

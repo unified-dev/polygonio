@@ -49,7 +49,7 @@ namespace PolygonIo.Utils.StreamRecorder
                 count = count + data.Length;
                 binaryWriter.Write(data.ToArray());
                 binaryWriter.Write((byte)'\n'); // delimit frames with new line
-                releaseBuffer();
+                releaseBuffer.Dispose();
 
                 var span = (DateTime.UtcNow - lastUpdate);
 
