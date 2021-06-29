@@ -15,7 +15,7 @@ namespace PolygonIo.WebSocket
         private readonly ILogger<PolygonWebsocket> logger;
         private readonly IPolygonDeserializer deserializer;
         private bool isRunning;
-        private ActionBlock<IEnumerable<object>> dispatchBlock;
+        // private ActionBlock<IEnumerable<object>> dispatchBlock;
         private readonly PolygonConnection polygonConnection;
 
         public PolygonWebsocket(string apiKey, string apiUrl, int reconnectTimeout, ILoggerFactory loggerFactory)
@@ -67,14 +67,12 @@ namespace PolygonIo.WebSocket
             return list;
         }
 
-        
         public void Start(IEnumerable<string> tickers, Func<Trade, Task> onTradeAsync, Func<Quote, Task> onQuoteAsync,
             Func<TimeAggregate, Task> onAggregateAsync, Func<StatusMessage, Task> onStatusAsync)
         {
             StartCore(tickers, onTradeAsync, onQuoteAsync, onAggregateAsync, onStatusAsync, null);
         }
 
-        // If onTraceRawFrameAsync is set the buffer MUST be released via the dispose delegate that is passed to the callback.
         public void StartWithFrameTrace(IEnumerable<string> tickers, Func<Trade, Task> onTradeAsync, Func<Quote, Task> onQuoteAsync,
             Func<TimeAggregate, Task> onAggregateAsync, Func<StatusMessage, Task> onStatusAsync,
             Func<byte[], Task> onFrameAsync)
@@ -91,9 +89,16 @@ namespace PolygonIo.WebSocket
                 return;
             this.isRunning = true;
 
-            this.dispatchBlock = new ActionBlock<IEnumerable<object>>(async (items) =>
+            //this.dispatchBlock = new ActionBlock<IEnumerable<object>>(async (items) =>
+            //{
+                
+            //}, new ExecutionDataflowBlockOptions { MaxDegreeOfParallelism = 1, BoundedCapacity = 1 });
+
+            this.polygonConnection.Start(tickers, async (data, releaseBuffer) =>
             {
-                foreach (var item in items)
+                var decodedData = Decode(data);
+
+                foreach (var item in decodedData)
                 {
                     if (item is Quote quote)
                         await onQuoteAsync(quote);
@@ -104,14 +109,10 @@ namespace PolygonIo.WebSocket
                     else if (item is StatusMessage status)
                         await onStatusAsync(status);
                 }
-            }, new ExecutionDataflowBlockOptions { MaxDegreeOfParallelism = 1, BoundedCapacity = 1 });
 
-            this.polygonConnection.Start(tickers, async (data, releaseBuffer) =>
-            {
-                var decodedData = Decode(data);
-                await this.dispatchBlock.SendAsync(decodedData);
+                // await this.dispatchBlock.SendAsync(decodedData);
 
-                // Copy and send if caller has set the raw frame callback.
+                // If caller has set the raw frame callback, then Copy the array to a new array and send.
                 if (onTraceRawFrameAsync != null)
                     await onTraceRawFrameAsync(data.ToArray());
 
@@ -125,8 +126,8 @@ namespace PolygonIo.WebSocket
                 return;
 
             this.polygonConnection.Stop();            
-            this.dispatchBlock.Complete();
-            this.dispatchBlock.Completion.Wait();
+            //this.dispatchBlock.Complete();
+            //this.dispatchBlock.Completion.Wait();
             this.isRunning = false;
         }
 
@@ -136,8 +137,8 @@ namespace PolygonIo.WebSocket
                 return;
 
             await this.polygonConnection.StopAsync();
-            this.dispatchBlock.Complete();
-            await this.dispatchBlock.Completion;
+            //this.dispatchBlock.Complete();
+            //await this.dispatchBlock.Completion;
             this.isRunning = false;
         }
 

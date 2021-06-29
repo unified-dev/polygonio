@@ -48,7 +48,7 @@ namespace PolygonIo.WebSocket
 
         private async Task Loop(IEnumerable<string> tickers, Func<ReadOnlySequence<byte>, IDisposable, Task> dispatch, CancellationToken cancellationToken)
         {           
-            this.logger.LogInformation($"Entering {nameof(PolygonConnection.Loop)}.");
+            this.logger.LogInformation($"Entering {nameof(PolygonConnection.Loop)}().");
 
             while (cancellationToken.IsCancellationRequested == false)
             {
@@ -58,13 +58,13 @@ namespace PolygonIo.WebSocket
 
                 try
                 {
-                    this.logger.LogInformation($"Connecting.");
+                    this.logger.LogInformation($"{nameof(PolygonConnection)} connecting.");
                     await webSocket.ConnectAsync(uri, cancellationToken);
 
-                    this.logger.LogInformation($"Authenticating.");
+                    this.logger.LogInformation($"{nameof(PolygonConnection)} authenticating.");
                     await webSocket.SendAuthentication(this.apiKey, cancellationToken);
 
-                    this.logger.LogInformation($"Subscribing to {tickers.Count()} symbols.");
+                    this.logger.LogInformation($"{nameof(PolygonConnection)} subscribing to {tickers.Count():N0} symbols.");
                     await webSocket.SubscribeToAggregatePerSecond(tickers, cancellationToken);
                     await webSocket.SubscribeToAggregatePerMinute(tickers, cancellationToken);
                     await webSocket.SubscribeToQuotes(tickers, cancellationToken);
@@ -89,7 +89,7 @@ namespace PolygonIo.WebSocket
                 {
                     this.logger.LogError(ex, ex.Message);
                 }
-                catch (TaskCanceledException ex)
+                catch (TaskCanceledException)
                 {
                     this.logger.LogInformation("TaskCanceled shutting down.");
                 }
