@@ -59,7 +59,6 @@ namespace PolygonIo.Utils.StreamRecorder
                     lastUpdate = DateTime.UtcNow;
                     count = 0;
                 }
-                return Task.CompletedTask;
             });
 
             Console.WriteLine($"Now recording to {filename}, press any key to stop...");

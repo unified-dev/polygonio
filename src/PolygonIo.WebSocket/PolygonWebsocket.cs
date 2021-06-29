@@ -2,7 +2,6 @@
 using System;
 using System.Text;
 using System.Collections.Generic;
-using System.Threading.Tasks.Dataflow;
 using System.Buffers;
 using System.Threading.Tasks;
 using PolygonIo.WebSocket.Contracts;
@@ -43,80 +42,44 @@ namespace PolygonIo.WebSocket
             return localBuffer;
         }
 
-        private IEnumerable<object> Decode(ReadOnlySequence<byte> data)
+        private void Decode(ReadOnlySequence<byte> data, Action<Quote> onQuote, Action<Trade> onTrade,
+            Action<TimeAggregate> onPerSecondAggregate, Action<TimeAggregate> onPerMinuteAggregate,
+            Action<StatusMessage> onStatusMessage)
         {
             var list = new List<object>();
             var localBuffer = GetBuffer(data);
 
-            try
-            {
-                deserializer.Deserialize(localBuffer,
-                            (quote) => list.Add(quote),
-                            (trade) => list.Add(trade),
-                            (aggregate) => list.Add(aggregate),
-                            (aggregate) => list.Add(aggregate),
-                            (status) => list.Add(status),
-                            (ex) => this.logger.LogError(ex, ex.Message));
-            }
-            catch(Exception ex)
-            {
-                this.logger.LogError(ex, $"Error deserializing '{Encoding.UTF8.GetString(localBuffer)}' ({ex.Message}).");
-            }
-
-            // Return data as a list so we can dispatch to queue with one method call, as opposed to individual dispatches.
-            return list;
+            deserializer.Deserialize(localBuffer, onQuote, onTrade, onPerSecondAggregate, onPerMinuteAggregate, onStatusMessage,
+                    (ex, frame) => this.logger.LogError(ex, $"Error deserializing '{Encoding.UTF8.GetString(frame)}' ({ex.Message})."),
+                    (eventName) => this.logger.LogWarning($"Unknown event type '{eventName}'."));
         }
 
-        public void Start(IEnumerable<string> tickers, Func<Trade, Task> onTradeAsync, Func<Quote, Task> onQuoteAsync,
-            Func<TimeAggregate, Task> onAggregateAsync, Func<StatusMessage, Task> onStatusAsync)
+        public void Start(IEnumerable<string> tickers, Action<Trade> onTrade, Action<Quote> onQuote,
+            Action<TimeAggregate> onAggregate, Action<StatusMessage> onStatusMessage)
         {
-            StartCore(tickers, onTradeAsync, onQuoteAsync, onAggregateAsync, onStatusAsync, null);
+            StartCore(tickers, onTrade, onQuote, onAggregate, onStatusMessage, null);
         }
 
-        public void StartWithFrameTrace(IEnumerable<string> tickers, Func<Trade, Task> onTradeAsync, Func<Quote, Task> onQuoteAsync,
-            Func<TimeAggregate, Task> onAggregateAsync, Func<StatusMessage, Task> onStatusAsync,
-            Func<byte[], Task> onFrameAsync)
+        public void StartWithFrameTrace(IEnumerable<string> tickers, Action<Trade> onTrade, Action<Quote> onQuote,
+            Action<TimeAggregate> onAggregate, Action<StatusMessage> onStatusMessage, Action<byte[]> withRawFrame)
         {
-            if (onFrameAsync == null) throw new ArgumentNullException(nameof(onFrameAsync));
-            StartCore(tickers, onTradeAsync, onQuoteAsync, onAggregateAsync, onStatusAsync, onFrameAsync);
+            if (withRawFrame == null) throw new ArgumentNullException(nameof(withRawFrame));
+            StartCore(tickers, onTrade, onQuote, onAggregate, onStatusMessage, withRawFrame);
         }
 
-        private void StartCore(IEnumerable<string> tickers, Func<Trade, Task> onTradeAsync, Func<Quote, Task> onQuoteAsync,
-            Func<TimeAggregate, Task> onAggregateAsync, Func<StatusMessage, Task> onStatusAsync,
-            Func<byte[], Task> onTraceRawFrameAsync)
+        private void StartCore(IEnumerable<string> tickers, Action<Trade> onTrade, Action<Quote> onQuote,
+            Action<TimeAggregate> onAggregate, Action<StatusMessage> onStatusMessage, Action<byte[]> withRawFrame)
         {
             if (this.isRunning)
                 return;
             this.isRunning = true;
 
-            //this.dispatchBlock = new ActionBlock<IEnumerable<object>>(async (items) =>
-            //{
-                
-            //}, new ExecutionDataflowBlockOptions { MaxDegreeOfParallelism = 1, BoundedCapacity = 1 });
-
-            this.polygonConnection.Start(tickers, async (data, releaseBuffer) =>
+            this.polygonConnection.Start(tickers, (data, releaseBuffer) =>
             {
-                var decodedData = Decode(data);
-
-                foreach (var item in decodedData)
-                {
-                    if (item is Quote quote)
-                        await onQuoteAsync(quote);
-                    else if (item is Trade trade)
-                        await onTradeAsync(trade);
-                    else if (item is TimeAggregate aggregate)
-                        await onAggregateAsync(aggregate);
-                    else if (item is StatusMessage status)
-                        await onStatusAsync(status);
-                }
-
-                // await this.dispatchBlock.SendAsync(decodedData);
-
+                Decode(data, onQuote, onTrade, onAggregate, onAggregate, onStatusMessage);
                 // If caller has set the raw frame callback, then Copy the array to a new array and send.
-                if (onTraceRawFrameAsync != null)
-                    await onTraceRawFrameAsync(data.ToArray());
-
-                releaseBuffer.Dispose();
+                withRawFrame?.Invoke(data.ToArray());
+                releaseBuffer.Dispose(); // Always dispose the rented buffer.
             });
         }
 
@@ -125,9 +88,7 @@ namespace PolygonIo.WebSocket
             if(this.isRunning == false)
                 return;
 
-            this.polygonConnection.Stop();            
-            //this.dispatchBlock.Complete();
-            //this.dispatchBlock.Completion.Wait();
+            this.polygonConnection.Stop();
             this.isRunning = false;
         }
 
@@ -137,8 +98,6 @@ namespace PolygonIo.WebSocket
                 return;
 
             await this.polygonConnection.StopAsync();
-            //this.dispatchBlock.Complete();
-            //await this.dispatchBlock.Completion;
             this.isRunning = false;
         }
 

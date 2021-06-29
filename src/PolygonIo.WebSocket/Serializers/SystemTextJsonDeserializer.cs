@@ -22,7 +22,7 @@ namespace PolygonIo.WebSocket.Serializers
             return true;
         }
 
-        public void Deserialize(ReadOnlySpan<byte> data, Action<Quote> onQuote, Action<Trade> onTrade, Action<TimeAggregate> onPerSecondAggregate, Action<TimeAggregate> onPerMinuteAggregate, Action<StatusMessage> onStatus, Action<Exception> onError, Action<string> onUnknown = null)
+        public void Deserialize(ReadOnlySpan<byte> data, Action<Quote> onQuote, Action<Trade> onTrade, Action<TimeAggregate> onPerSecondAggregate, Action<TimeAggregate> onPerMinuteAggregate, Action<StatusMessage> onStatus, Action<Exception, byte[]> onError, Action<string> onUnknown = null)
         {
             while(GetJsonObject(data, out var jsonObject))
             {
@@ -50,15 +50,14 @@ namespace PolygonIo.WebSocket.Serializers
                     }
                     else
                     {
-                        // Unknown event type.
-                        onUnknown?.Invoke(Encoding.UTF8.GetString(jsonObject));
+                        onUnknown?.Invoke(Encoding.UTF8.GetString(jsonObject)); // Unknown event type.
                     }
                     
                     data = data.Slice(jsonObject.Length + 1); // Skip forward over the processed json.
                 }
                 catch (Exception e)
                 {
-                    onError(e);
+                    onError(e, data.ToArray());
                 }
             }
         }

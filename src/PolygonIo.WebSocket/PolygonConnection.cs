@@ -46,7 +46,7 @@ namespace PolygonIo.WebSocket
             }
         }
 
-        private async Task Loop(IEnumerable<string> tickers, Func<ReadOnlySequence<byte>, IDisposable, Task> dispatch, CancellationToken cancellationToken)
+        private async Task Loop(string[] tickers, Action<ReadOnlySequence<byte>, IDisposable> dispatch, CancellationToken cancellationToken)
         {           
             this.logger.LogInformation($"Entering {nameof(PolygonConnection.Loop)}().");
 
@@ -81,7 +81,7 @@ namespace PolygonIo.WebSocket
                                 break; // End of message with no data means socket closed - break so we can reconnect.
 
                             // Send the frame, and delegate consumer should call to release the buffer once done.
-                            await dispatch(frame, Disposable.Create(() => ReturnRentedBuffer(frame)));
+                            dispatch(frame, Disposable.Create(() => ReturnRentedBuffer(frame)));
                         }
                     }
                 }
@@ -91,7 +91,7 @@ namespace PolygonIo.WebSocket
                 }
                 catch (TaskCanceledException)
                 {
-                    this.logger.LogInformation("TaskCanceled shutting down.");
+                    this.logger.LogInformation($"TaskCanceled, {nameof(PolygonConnection.Loop)}() shutting down.");
                 }
                 catch (Exception ex)
                 {
@@ -106,13 +106,13 @@ namespace PolygonIo.WebSocket
             }
         }
 
-        public void Start(IEnumerable<string> tickers, Func<ReadOnlySequence<byte>, IDisposable, Task> dispatch)
+        public void Start(IEnumerable<string> tickers, Action<ReadOnlySequence<byte>, IDisposable> dispatch)
         {
             if (dispatch is null)
                 throw new ArgumentNullException(nameof(dispatch));
 
             this.cts = new CancellationTokenSource();
-            this.loopTask = Task.Factory.StartNew(async () => await Loop(tickers, dispatch, this.cts.Token));
+            this.loopTask = Task.Factory.StartNew(async () => await Loop(tickers.ToArray(), dispatch, this.cts.Token));
         }
 
         public void Stop()

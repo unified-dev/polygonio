@@ -122,7 +122,7 @@ namespace PolygonIo.Utils.StreamReplay
                     (aggregate) => list.Add(aggregate),
                     (aggregate) => list.Add(aggregate),
                     (status) => list.Add(status),
-                    (ex) => logger.LogError(ex, ex.Message));                
+                    (ex, data) => logger.LogError(ex, ex.Message));                
             }
             catch (Exception ex)
             {
