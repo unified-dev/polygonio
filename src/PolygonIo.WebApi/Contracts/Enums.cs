@@ -7,15 +7,6 @@ namespace PolygonIo.WebApi.Contracts
 
     public enum Sort { asc, desc }
 
-    public enum PrimaryExchange
-    {
-        XASE,
-        XNAS,
-        XNYS,
-        ARCX,
-        BATS
-    }
-
     public enum TickerType
     {
         CS, // Common Stock

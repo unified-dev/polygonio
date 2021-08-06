@@ -52,9 +52,9 @@ namespace PolygonIo.WebSocket
 
             while (cancellationToken.IsCancellationRequested == false)
             {
-                var webSocket = new ClientWebSocket();
+                using var webSocket = new ClientWebSocket();
+                using var resultProcessor = new WebSocketReceiveResultProcessor();
                 webSocket.Options.KeepAliveInterval = this.keepAliveInterval;
-                var resultProcessor = new WebSocketReceiveResultProcessor();
 
                 try
                 {
@@ -91,17 +91,12 @@ namespace PolygonIo.WebSocket
                 }
                 catch (TaskCanceledException)
                 {
-                    this.logger.LogInformation($"TaskCanceled, {nameof(PolygonConnection.Loop)}() shutting down.");
+                    this.logger.LogInformation($"TaskCanceled no more frames will be dispatched, {nameof(PolygonConnection)} {nameof(PolygonConnection.Loop)} shutting down.");
                 }
                 catch (Exception ex)
                 {
                     this.logger.LogCritical(ex, ex.Message);
                     return;
-                }
-                finally
-                {
-                    webSocket.Dispose();
-                    resultProcessor.Dispose();
                 }
             }
         }

@@ -11,7 +11,7 @@ namespace PolygonIo.WebApi.Contracts
         public Locale Locale { get; set; }
         public bool Active { get; set; }
         [JsonProperty("primary_exchange")]
-        public PrimaryExchange PrimaryExchange { get; set; }
+        public string PrimaryExchange { get; set; }
         [JsonProperty("currency_name")]
         public CurrencyCode CurrencyName { get; set; }
         [JsonProperty("cik")]
