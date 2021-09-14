@@ -8,6 +8,8 @@ using System.Net.Http;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using NodaTime;
+using NodaTime.Extensions;
 using PolygonIo.WebApi.Contracts;
 
 namespace PolygonIo.PowerShell
@@ -24,7 +26,7 @@ namespace PolygonIo.PowerShell
         public int Multiplier { get; set; }
 
         [Parameter(Position = 2, Mandatory = true, ValueFromPipelineByPropertyName = true)]
-        public Timespan Timespan { get; set; }
+        public AggregateTimespan Timespan { get; set; }
 
         [Parameter(Position = 3, Mandatory = true, ValueFromPipelineByPropertyName = true)]
         public DateTime From { get; set; }
@@ -51,11 +53,19 @@ namespace PolygonIo.PowerShell
 
         protected async Task<AggregateResponse> ProcessRecordAsync()
         {
-            using (var client = new HttpClient())
-            {
-                return await client.GetPolygonAggregatesBarsV2Async(
-                    cts.Token, this.ApiKey, StocksTicker, Multiplier, Timespan, From, To, Unadjusted, Sort, Limit);
-            }
+            using var client = new HttpClient();
+
+            return await client.GetPolygonAggregatesBarsV2(
+                cancellationToken: cts.Token,
+                apiKey: this.ApiKey,
+                symbol: StocksTicker,
+                multiplier: Multiplier,
+                timespan: Timespan,
+                from: From.ToLocalDateTime().Date,
+                to: To.ToLocalDateTime().Date,
+                unadjusted: Unadjusted,
+                sort: Sort, 
+                limit: Limit);
         }
 
         protected override void StopProcessing()

@@ -1,7 +1,7 @@
 ﻿
 namespace PolygonIo.WebApi.Contracts
 {
-    public enum Timespan { Minute, Hour, Day, Week, Month, Quarter, Year }
+    public enum AggregateTimespan { Minute, Hour, Day, Week, Month, Quarter, Year }
 
     public enum SortTickersBy { Ticker, Name, Market, Locale, Currency, Active, PrimarExchange, Type }
 
